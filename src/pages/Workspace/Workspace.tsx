@@ -1,10 +1,28 @@
 import { useNavigate } from "react-router-dom";
+import { useState } from "react";
 import { useClassroom } from "../../store/useClassroom";
+import { subjectTools } from "../../data/subjectTools";
+import { subjectShelf } from "../../data/subjectShelf";
+import { subjectContent } from "../../data/subjectContent";
+import CanvasRenderer from "../../components/Canvas/CanvasRenderer";
+
+
 
 function Workspace() {
   const navigate = useNavigate();
 
   const { selectedClass, selectedSubject } = useClassroom();
+
+  const [selectedShelf, setSelectedShelf] = useState("");
+
+  const [selectedLesson, setSelectedLesson] = useState("");
+
+  const tools = subjectTools[selectedSubject] || [];
+
+  const shelfItems = subjectShelf[selectedSubject] || [];
+
+  const currentContent = subjectContent[selectedSubject]?.[selectedShelf] || [];
+
 
   return (
     <div className="h-screen flex flex-col bg-slate-100">
@@ -21,6 +39,10 @@ function Workspace() {
 
         <div className="text-xl font-semibold">
           {selectedClass} • {selectedSubject}
+        </div>
+
+        <div className="text-sm">
+          {selectedLesson}
         </div>
 
       </div>
@@ -40,13 +62,16 @@ function Workspace() {
 
         </div>
 
+
         {/* Canvas */}
         <div className="flex-1 p-6">
-
-          <div className="w-full h-full bg-white rounded-3xl shadow-lg flex items-center justify-center text-4xl font-bold text-slate-400">
-            Canvas Area
-          </div>
-
+          <CanvasRenderer
+            selectedShelf={selectedShelf}
+            selectedLesson={selectedLesson}
+            currentContent={currentContent}
+            onLessonSelect={setSelectedLesson}
+            onBack={() => setSelectedLesson("")}
+          />
         </div>
 
         {/* Smart Tools */}
@@ -57,19 +82,14 @@ function Workspace() {
           </h2>
 
           <div className="space-y-4">
-
-            <button className="w-full h-16 bg-slate-100 rounded-xl hover:bg-slate-200">
-              🧬 Cell Explorer
-            </button>
-
-            <button className="w-full h-16 bg-slate-100 rounded-xl hover:bg-slate-200">
-              🫀 Human Body
-            </button>
-
-            <button className="w-full h-16 bg-slate-100 rounded-xl hover:bg-slate-200">
-              🔬 Microscope
-            </button>
-
+            {tools.map((tool) => (
+              <button
+                key={tool}
+                className="w-full h-16 bg-slate-100 rounded-xl hover:bg-slate-200"
+              >
+                {tool}
+              </button>
+            ))}
           </div>
 
         </div>
@@ -79,25 +99,18 @@ function Workspace() {
       {/* Lesson Shelf */}
       <div className="h-28 bg-white shadow-inner flex items-center justify-center gap-6">
 
-        <button className="px-6 py-3 bg-slate-100 rounded-xl hover:bg-slate-200">
-          Diagram
-        </button>
-
-        <button className="px-6 py-3 bg-slate-100 rounded-xl hover:bg-slate-200">
-          3D Model
-        </button>
-
-        <button className="px-6 py-3 bg-slate-100 rounded-xl hover:bg-slate-200">
-          Video
-        </button>
-
-        <button className="px-6 py-3 bg-slate-100 rounded-xl hover:bg-slate-200">
-          Activity
-        </button>
-
-        <button className="px-6 py-3 bg-slate-100 rounded-xl hover:bg-slate-200">
-          Quiz
-        </button>
+        {shelfItems.map((item) => (
+          <button
+            key={item}
+            onClick={() => setSelectedShelf(item)}
+            className={`px-6 py-3 rounded-xl transition ${selectedShelf === item
+              ? "bg-blue-600 text-white"
+              : "bg-slate-100 hover:bg-slate-200"
+              }`}
+          >
+            {item}
+          </button>
+        ))}
 
       </div>
 

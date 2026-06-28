@@ -1,5 +1,5 @@
 import AppRoutes from "./routes/AppRoutes";
-import { ClassroomProvider } from "./store/classroomProvider";
+import { ClassroomProvider } from "./store/ClassroomProvider";
 
 function App() {
   return (
