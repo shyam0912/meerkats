@@ -1,4 +1,5 @@
-import LessonViewer from "../workspace/LessonViewer";
+import LessonViewer from "../viewers/LessonViewer/LessonViewer";
+import WorkspaceViewer from "../viewers/WorkspaceViewer/WorkspaceViewer";
 import { contentViewer } from "../../data/contentViewer";
 
 interface CanvasRendererProps {
@@ -29,25 +30,31 @@ function CanvasRenderer({
         </div>
       )}
 
-      {selectedShelf && !selectedLesson && (
-        <>
-          <h2 className="text-3xl font-bold mb-8">
-            {selectedShelf}
-          </h2>
-
-          <div className="grid grid-cols-2 gap-4">
-            {currentContent.map((content) => (
-              <button
-                key={content}
-                onClick={() => onLessonSelect(content)}
-                className="h-24 bg-slate-100 rounded-2xl text-xl font-semibold hover:bg-slate-200 transition"
-              >
-                {content}
-              </button>
-            ))}
-          </div>
-        </>
+      {selectedShelf === "Workspace" && (
+        <WorkspaceViewer />
       )}
+
+      {selectedShelf !== "Workspace" &&
+        selectedShelf &&
+        !selectedLesson && (
+          <>
+            <h2 className="text-3xl font-bold mb-8">
+              {selectedShelf}
+            </h2>
+
+            <div className="grid grid-cols-2 gap-4">
+              {currentContent.map((content) => (
+                <button
+                  key={content}
+                  onClick={() => onLessonSelect(content)}
+                  className="h-24 bg-slate-100 rounded-2xl text-xl font-semibold hover:bg-slate-200 transition"
+                >
+                  {content}
+                </button>
+              ))}
+            </div>
+          </>
+        )}
 
       {lesson && (
         <LessonViewer

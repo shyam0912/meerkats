@@ -1,3 +1,6 @@
+import ImageViewer from "../ImageViewer/ImageViewer";
+
+
 interface Lesson {
   title: string;
   description: string;
@@ -30,10 +33,9 @@ function LessonViewer({
         {lesson.title}
       </h1>
 
-      <img
-        src={lesson.image}
-        alt={lesson.title}
-        className="w-full max-h-96 object-cover rounded-2xl"
+      <ImageViewer
+        image={lesson.image}
+        title={lesson.title}
       />
 
       <p className="text-lg text-slate-700">
