@@ -1,11 +1,11 @@
 import AppRoutes from "./routes/AppRoutes";
-import { ClassroomProvider } from "./store/ClassroomProvider";
+import AppProviders from "./providers/AppProviders";
 
 function App() {
   return (
-    <ClassroomProvider>
+    <AppProviders>
       <AppRoutes />
-    </ClassroomProvider>
+    </AppProviders>
   );
 }
 

@@ -1,15 +1,14 @@
+import { Stage, Layer } from "react-konva";
+
 function DrawingCanvas() {
   return (
-    <div className="flex-1 min-h-[600px] rounded-3xl border-2 border-dashed border-slate-300 bg-white flex items-center justify-center">
-      <div className="text-center">
-        <h2 className="text-3xl font-bold">
-          Digital Blackboard
-        </h2>
-
-        <p className="text-slate-500 mt-2">
-          Ready for teaching...
-        </p>
-      </div>
+    <div className="flex-1 bg-white rounded-3xl overflow-hidden">
+      <Stage
+        width={1200}
+        height={700}
+      >
+        <Layer />
+      </Stage>
     </div>
   );
 }

@@ -1,6 +1,5 @@
 export const subjectShelf: Record<string, string[]> = {
   Science: [
-    "Workspace",
     "🧬 Diagram",
     "🧊 3D Model",
     "🎥 Video",
@@ -8,7 +7,6 @@ export const subjectShelf: Record<string, string[]> = {
   ],
 
   Mathematics: [
-    "Workspace",
     "📊 Graph",
     "📐 Geometry",
     "🎥 Video",
@@ -17,7 +15,6 @@ export const subjectShelf: Record<string, string[]> = {
   ],
 
   English: [
-    "Workspace",
     "📖 Story",
     "🎤 Listening",
     "✍ Writing",

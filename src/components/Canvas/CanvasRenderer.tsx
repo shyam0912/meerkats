@@ -25,17 +25,10 @@ function CanvasRenderer({
     <div className="w-full h-full bg-white rounded-3xl shadow-lg p-8 overflow-auto">
 
       {!selectedShelf && (
-        <div className="h-full flex items-center justify-center text-4xl font-bold text-slate-400">
-          Select a lesson item below
-        </div>
-      )}
-
-      {selectedShelf === "Workspace" && (
         <WorkspaceViewer />
       )}
 
-      {selectedShelf !== "Workspace" &&
-        selectedShelf &&
+      {selectedShelf &&
         !selectedLesson && (
           <>
             <h2 className="text-3xl font-bold mb-8">
