@@ -1,3 +1,4 @@
+import { useNavigate } from "react-router-dom";
 import { useState } from "react";
 import { useClassroom } from "../../store/useClassroom";
 import { subjectTools } from "../../data/subjectTools";
@@ -14,6 +15,8 @@ import SmartTools from "../../components/workspace/SmartTools";
 
 function Workspace() {
 
+  const navigate = useNavigate();
+
   const { selectedClass, selectedSubject } = useClassroom();
 
   const [selectedShelf, setSelectedShelf] = useState("");
@@ -28,24 +31,29 @@ function Workspace() {
 
 
   return (
-    <div className="h-screen flex flex-col bg-slate-100">
+    <div className="h-screen overflow-hidden flex flex-col bg-slate-100">
 
       {/* Top Bar */}
       <WorkspaceTopBar
         selectedClass={selectedClass}
         selectedSubject={selectedSubject}
         selectedLesson={selectedLesson}
+        onWhiteboard={() => {
+          setSelectedShelf("");
+          setSelectedLesson("");
+        }}
+        onExit={() => navigate("/")}
       />
 
       {/* Main Area */}
-      <div className="flex flex-1">
+      <div className="flex flex-1 overflow-hidden">
 
         {/* Left Tool Dock */}
         <ToolDock />
 
 
         {/* Canvas */}
-        <div className="flex-1 p-6">
+        <div className="flex-1 p-6 overflow-hidden">
           <CanvasRenderer
             selectedShelf={selectedShelf}
             selectedLesson={selectedLesson}

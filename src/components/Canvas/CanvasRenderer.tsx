@@ -22,7 +22,7 @@ function CanvasRenderer({
     : null;
 
   return (
-    <div className="w-full h-full bg-white rounded-3xl shadow-lg p-8 overflow-auto">
+    <div className="w-full h-full bg-white rounded-3xl shadow-lg p-8 overflow-hidden">
 
       {!selectedShelf && (
         <WorkspaceViewer />
