@@ -10,9 +10,19 @@ export interface DrawingContextType extends DrawingState {
   setStrokeColor: (color: string) => void;
   setStrokeWidth: (width: number) => void;
 
-  setStrokes: React.Dispatch<
-    React.SetStateAction<Stroke[]>
-  >;
+  addStroke: (stroke: Stroke) => void;
+
+  updateLastStroke: (
+    pointX: number,
+    pointY: number
+  ) => void;
+
+  clearCanvas: () => void;
+
+  undo: () => void;
+
+  redo: () => void;
+
 }
 
 export const DrawingContext =

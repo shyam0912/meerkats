@@ -2,7 +2,6 @@ import { Stage, Layer } from "react-konva";
 import { useEffect, useRef, useState } from "react";
 
 import useDrawing from "../../store/useDrawing";
-import type { Stroke } from "../../types/drawing";
 import type { KonvaEventObject } from "konva/lib/Node";
 
 import BackgroundLayer from "../layers/BackgroundLayer";
@@ -12,11 +11,12 @@ function DrawingCanvas() {
   const containerRef = useRef<HTMLDivElement>(null);
 
   const {
-    strokes,
-    setStrokes,
     selectedTool,
     strokeColor,
     strokeWidth,
+
+    addStroke,
+    updateLastStroke,
   } = useDrawing();
 
   const isDrawing = useRef(false);
@@ -25,6 +25,10 @@ function DrawingCanvas() {
     width: 1200,
     height: 700,
   });
+
+  const handleMouseUp = () => {
+    isDrawing.current = false;
+  };
 
   useEffect(() => {
     function resize() {
@@ -48,7 +52,12 @@ function DrawingCanvas() {
   const handleMouseDown = (
     e: KonvaEventObject<MouseEvent | TouchEvent>
   ) => {
-    if (selectedTool !== "pen" && selectedTool !== "eraser") return;
+    if (
+      selectedTool !== "pen" &&
+      selectedTool !== "eraser"
+    ) {
+      return;
+    }
 
     isDrawing.current = true;
 
@@ -58,21 +67,21 @@ function DrawingCanvas() {
 
     const pos = stage.getPointerPosition();
 
-
     if (!pos) return;
 
-    const newStroke: Stroke = {
+    addStroke({
       id: Date.now().toString(),
       tool: selectedTool,
-      color: selectedTool === "eraser" ? "#ffffff" : strokeColor,
+      color:
+        selectedTool === "eraser"
+          ? "#ffffff"
+          : strokeColor,
       width:
         selectedTool === "eraser"
           ? strokeWidth * 6
           : strokeWidth,
       points: [pos.x, pos.y],
-    };
-
-    setStrokes((prev) => [...prev, newStroke]);
+    });
   };
 
   const handleMouseMove = (
@@ -80,35 +89,19 @@ function DrawingCanvas() {
   ) => {
     if (!isDrawing.current) return;
 
+
     const stage = e.target.getStage();
 
     if (!stage) return;
 
     const point = stage.getPointerPosition();
 
-
     if (!point) return;
 
-    setStrokes((prev) => {
-      if (prev.length === 0) return prev;
-
-      const copy = [...prev];
-      const lastStroke = { ...copy[copy.length - 1] };
-
-      lastStroke.points = [
-        ...lastStroke.points,
-        point.x,
-        point.y,
-      ];
-
-      copy[copy.length - 1] = lastStroke;
-
-      return copy;
-    });
-  };
-
-  const handleMouseUp = () => {
-    isDrawing.current = false;
+    updateLastStroke(
+      point.x,
+      point.y
+    );
   };
 
   return (

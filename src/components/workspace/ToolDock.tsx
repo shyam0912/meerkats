@@ -1,7 +1,19 @@
+import { useState } from "react";
+
 import useDrawing from "../../store/useDrawing";
+import ConfirmDialog from "../common/ConfirmDialog";
 
 function ToolDock() {
-  const { selectedTool, setSelectedTool } = useDrawing();
+  const {
+    selectedTool,
+    setSelectedTool,
+    clearCanvas,
+    undo,
+    redo,
+  } = useDrawing();
+
+  const [showClearDialog, setShowClearDialog] =
+    useState(false);
 
   const toolButton = (
     tool: "pen" | "eraser" | "rectangle" | "text",
@@ -28,32 +40,64 @@ function ToolDock() {
   );
 
   return (
-    <div className="w-24 bg-white border-r shadow-lg flex flex-col items-center py-6 gap-4">
+    <>
+      <div className="w-24 bg-white border-r shadow-lg flex flex-col items-center py-6 gap-4">
 
-      {toolButton("pen", "✏️", "Pen")}
+        {toolButton("pen", "✏️", "Pen")}
 
-      {toolButton("eraser", "🧽", "Eraser")}
+        {toolButton("eraser", "🧽", "Eraser")}
 
-      {toolButton("rectangle", "⬜", "Rectangle")}
+        {toolButton("rectangle", "⬜", "Rectangle")}
 
-      {toolButton("text", "T", "Text")}
+        {toolButton("text", "T", "Text")}
 
-      <div className="w-10 border-t border-slate-300 my-2" />
+        <div className="w-10 border-t border-slate-300 my-2" />
 
-      <button
-        title="Undo"
-        className="w-14 h-14 rounded-2xl bg-slate-100 hover:bg-slate-200 text-2xl transition"
-      >
-        ↩
-      </button>
+        <button
+          title="Undo"
+          onClick={undo}
+          className="w-14 h-14 rounded-2xl bg-slate-100 hover:bg-slate-200 text-2xl transition"
+        >
+          ↩
+        </button>
 
-      <button
-        title="Redo"
-        className="w-14 h-14 rounded-2xl bg-slate-100 hover:bg-slate-200 text-2xl transition"
-      >
-        ↪
-      </button>
-    </div>
+        <button
+          title="Redo"
+          onClick={redo}
+          className="w-14 h-14 rounded-2xl bg-slate-100 hover:bg-slate-200 text-2xl transition"
+        >
+          ↪
+        </button>
+
+        <button
+          title="Clear Canvas"
+          onClick={() => setShowClearDialog(true)}
+          className="
+            w-14 h-14 rounded-2xl
+            bg-red-100
+            hover:bg-red-200
+            text-2xl
+            transition
+          "
+        >
+          🗑
+        </button>
+
+      </div>
+
+      <ConfirmDialog
+        open={showClearDialog}
+        title="Clear Whiteboard?"
+        message="All drawings on the whiteboard will be permanently removed."
+        confirmText="Clear"
+        cancelText="Cancel"
+        onCancel={() => setShowClearDialog(false)}
+        onConfirm={() => {
+          clearCanvas();
+          setShowClearDialog(false);
+        }}
+      />
+    </>
   );
 }
 
