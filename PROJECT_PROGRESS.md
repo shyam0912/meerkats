@@ -55,7 +55,7 @@ Meerkats is an Interactive Panel Software designed for schools, enabling teacher
 
 ## In Progress
 
-- [ ] Pen Tool
+- [X] Pen Tool
 - [ ] Drawing Engine
 - [ ] Eraser
 - [ ] Undo

@@ -65,7 +65,10 @@ function DrawingCanvas() {
       id: Date.now().toString(),
       tool: selectedTool,
       color: selectedTool === "eraser" ? "#ffffff" : strokeColor,
-      width: strokeWidth,
+      width:
+        selectedTool === "eraser"
+          ? strokeWidth * 6
+          : strokeWidth,
       points: [pos.x, pos.y],
     };
 
