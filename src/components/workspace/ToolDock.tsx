@@ -1,103 +1,120 @@
-import { useState } from "react";
-
 import useDrawing from "../../store/useDrawing";
-import ConfirmDialog from "../common/ConfirmDialog";
+import useWorkspaceUI from "../../store/useWorkspaceUI";
+import type { WorkspacePanel } from "../../store/workspace-ui-context";
 
 function ToolDock() {
   const {
-    selectedTool,
-    setSelectedTool,
-    clearCanvas,
+    activePanel,
+    togglePanel,
+  } = useWorkspaceUI();
+
+  const {
     undo,
     redo,
+    clearCanvas,
   } = useDrawing();
 
-  const [showClearDialog, setShowClearDialog] =
-    useState(false);
-
-  const toolButton = (
-    tool: "pen" | "eraser" | "rectangle" | "text",
-    icon: string,
-    title: string
-  ) => (
-    <button
-      title={title}
-      onClick={() => setSelectedTool(tool)}
-      className={`
-        w-14 h-14 rounded-2xl
-        flex items-center justify-center
-        text-2xl
-        transition-all duration-200
-        ${
-          selectedTool === tool
-            ? "bg-blue-600 text-white shadow-lg scale-110"
-            : "bg-slate-100 hover:bg-slate-200 text-slate-700"
-        }
-      `}
-    >
-      {icon}
-    </button>
-  );
+  const panels: {
+    id: WorkspacePanel;
+    icon: string;
+    label: string;
+  }[] = [
+      {
+        id: "draw",
+        icon: "🖍",
+        label: "Draw",
+      },
+      {
+        id: "lesson",
+        icon: "📚",
+        label: "Lesson",
+      },
+      {
+        id: "media",
+        icon: "🖼",
+        label: "Media",
+      },
+      {
+        id: "math",
+        icon: "🧮",
+        label: "Math",
+      },
+      {
+        id: "science",
+        icon: "🧪",
+        label: "Science",
+      },
+      {
+        id: "ai",
+        icon: "🤖",
+        label: "AI",
+      },
+    ];
 
   return (
-    <>
-      <div className="w-24 bg-white border-r shadow-lg flex flex-col items-center py-6 gap-4">
+    <div className="w-24 bg-white border-r shadow-lg flex flex-col">
 
-        {toolButton("pen", "✏️", "Pen")}
+      {/* Workspace Categories */}
+      <div className="flex-1 overflow-y-auto py-4 flex flex-col gap-3 items-center">
 
-        {toolButton("eraser", "🧽", "Eraser")}
+        {panels.map((panel) => (
+          <button
+            key={panel.id}
+            title={panel.label}
+            onClick={() => togglePanel(panel.id)}
+            className={`
+              w-16 h-16
+              rounded-2xl
+              flex flex-col
+              items-center
+              justify-center
+              transition-all
+              duration-200
+              ${activePanel === panel.id
+                ? "bg-blue-600 text-white shadow-lg scale-105"
+                : "bg-slate-100 hover:bg-slate-200"
+              }
+            `}
+          >
+            <span className="text-2xl">
+              {panel.icon}
+            </span>
 
-        {toolButton("rectangle", "⬜", "Rectangle")}
+            <span className="text-[10px] mt-1">
+              {panel.label}
+            </span>
+          </button>
+        ))}
 
-        {toolButton("text", "T", "Text")}
+      </div>
 
-        <div className="w-10 border-t border-slate-300 my-2" />
+      {/* Fixed Actions */}
+      <div className="border-t p-3 flex flex-col gap-3">
 
         <button
-          title="Undo"
           onClick={undo}
-          className="w-14 h-14 rounded-2xl bg-slate-100 hover:bg-slate-200 text-2xl transition"
+          className="w-full h-12 rounded-xl bg-slate-100 hover:bg-slate-200"
         >
           ↩
         </button>
 
         <button
-          title="Redo"
           onClick={redo}
-          className="w-14 h-14 rounded-2xl bg-slate-100 hover:bg-slate-200 text-2xl transition"
+          className="w-full h-12 rounded-xl bg-slate-100 hover:bg-slate-200"
         >
           ↪
         </button>
 
         <button
-          title="Clear Canvas"
-          onClick={() => setShowClearDialog(true)}
-          className="
-            w-14 h-14 rounded-2xl
-            bg-red-100
-            hover:bg-red-200
-            text-2xl
-            transition
-          "
+          onClick={clearCanvas}
+          className="w-full h-12 rounded-xl bg-red-100 hover:bg-red-200"
         >
           🗑
         </button>
 
       </div>
 
-      <ConfirmDialog
-        open={showClearDialog}
-        title="Clear Whiteboard?"
-        message="All drawings on the whiteboard will be permanently removed."
-        confirmText="Clear"
-        cancelText="Cancel"
-        onCancel={() => setShowClearDialog(false)}
-        onConfirm={() => {
-          clearCanvas();
-          setShowClearDialog(false);
-        }}
-      />
-    </>
+    </div>
   );
 }
 

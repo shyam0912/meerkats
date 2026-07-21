@@ -9,6 +9,7 @@ import LessonShelf from "../../components/workspace/LessonShelf";
 import WorkspaceTopBar from "../../components/workspace/WorkspaceTopBar";
 import ToolDock from "../../components/workspace/ToolDock";
 import SmartTools from "../../components/workspace/SmartTools";
+import FloatingPanel from "../../components/workspace/FloatingPanel";
 
 
 
@@ -46,11 +47,13 @@ function Workspace() {
       />
 
       {/* Main Area */}
-      <div className="flex flex-1 overflow-hidden">
+      <div className="relative flex flex-1 overflow-hidden">
 
         {/* Left Tool Dock */}
         <ToolDock />
 
+        {/* Floating Panel */}
+        <FloatingPanel />
 
         {/* Canvas */}
         <div className="flex-1 p-6 overflow-hidden">

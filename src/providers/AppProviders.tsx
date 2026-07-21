@@ -1,7 +1,8 @@
 import type { ReactNode } from "react";
 
 import { ClassroomProvider } from "../store/ClassroomProvider";
-import  DrawingProvider  from "../store/DrawingProvider";
+import DrawingProvider from "../store/DrawingProvider";
+import WorkspaceUIProvider from "../store/workspaceUIProvider";
 
 interface Props {
   children: ReactNode;
@@ -10,9 +11,11 @@ interface Props {
 function AppProviders({ children }: Props) {
   return (
     <ClassroomProvider>
-      <DrawingProvider>
-        {children}
-      </DrawingProvider>
+      <WorkspaceUIProvider>
+        <DrawingProvider>
+          {children}
+        </DrawingProvider>
+      </WorkspaceUIProvider>
     </ClassroomProvider>
   );
 }
