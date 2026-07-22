@@ -1,11 +1,14 @@
 export type DrawingTool =
   | "pen"
   | "eraser"
-  | "line"
+  | "shape"
+  | "text";
+
+export type ShapeType =
   | "rectangle"
   | "circle"
-  | "arrow"
-  | "text";
+  | "line"
+  | "arrow";
 
 export interface Stroke {
   id: string;
@@ -15,10 +18,31 @@ export interface Stroke {
   points: number[];
 }
 
+export interface Shape {
+  id: string;
+
+  type: ShapeType;
+
+  x: number;
+  y: number;
+
+  width: number;
+  height: number;
+
+  stroke: string;
+  strokeWidth: number;
+
+  fill?: string;
+}
+
 export interface DrawingState {
   selectedTool: DrawingTool;
+
+  selectedShape: ShapeType;
+
   strokeColor: string;
   strokeWidth: number;
 
   strokes: Stroke[];
+  shapes: Shape[];
 }

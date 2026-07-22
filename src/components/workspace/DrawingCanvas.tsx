@@ -4,19 +4,28 @@ import { useEffect, useRef, useState } from "react";
 import useDrawing from "../../store/useDrawing";
 import type { KonvaEventObject } from "konva/lib/Node";
 
+import { ToolManager } from "../../drawing/ToolManager";
+
 import BackgroundLayer from "../layers/BackgroundLayer";
 import AnnotationLayer from "../layers/AnnotationLayer";
 
 function DrawingCanvas() {
   const containerRef = useRef<HTMLDivElement>(null);
 
+  const toolManager = useRef(new ToolManager());
+
   const {
     selectedTool,
+    selectedShape,
+
     strokeColor,
     strokeWidth,
 
     addStroke,
     updateLastStroke,
+
+    addShape,
+    updateLastShape,
   } = useDrawing();
 
   const isDrawing = useRef(false);
@@ -26,7 +35,14 @@ function DrawingCanvas() {
     height: 700,
   });
 
-  const handleMouseUp = () => {
+  const handleMouseUp = (
+    e: KonvaEventObject<MouseEvent | TouchEvent>
+  ) => {
+    if (selectedTool === "pen") {
+      toolManager.current.onPointerUp(e);
+      return;
+    }
+
     isDrawing.current = false;
   };
 
@@ -49,13 +65,31 @@ function DrawingCanvas() {
     };
   }, []);
 
+
   const handleMouseDown = (
     e: KonvaEventObject<MouseEvent | TouchEvent>
   ) => {
-    if (
-      selectedTool !== "pen" &&
-      selectedTool !== "eraser"
-    ) {
+
+    toolManager.current.configure({
+      selectedTool,
+      selectedShape,
+
+      strokeColor,
+      strokeWidth,
+
+      addStroke,
+      updateLastStroke,
+
+      addShape,
+      updateLastShape,
+    });
+
+    if (selectedTool === "pen") {
+      toolManager.current.onPointerDown(e);
+      return;
+    }
+
+    if (selectedTool !== "eraser") {
       return;
     }
 
@@ -87,6 +121,12 @@ function DrawingCanvas() {
   const handleMouseMove = (
     e: KonvaEventObject<MouseEvent | TouchEvent>
   ) => {
+
+    if (selectedTool === "pen") {
+      toolManager.current.onPointerMove(e);
+      return;
+    }
+
     if (!isDrawing.current) return;
 
 
@@ -103,6 +143,8 @@ function DrawingCanvas() {
       point.y
     );
   };
+
+
 
   return (
     <div

@@ -4,14 +4,19 @@ function DrawPanel() {
   const {
     selectedTool,
     setSelectedTool,
+
+    selectedShape,
+    setSelectedShape,
+
     strokeColor,
     setStrokeColor,
+
     strokeWidth,
     setStrokeWidth,
   } = useDrawing();
 
   const toolButton = (
-    tool: "pen" | "eraser" | "rectangle" | "text",
+    tool: "pen" | "eraser" | "shape" | "text",
     icon: string,
     label: string
   ) => (
@@ -25,10 +30,9 @@ function DrawPanel() {
         p-3
         transition
         border
-        ${
-          selectedTool === tool
-            ? "bg-blue-600 text-white border-blue-600"
-            : "bg-white hover:bg-slate-100 border-slate-200"
+        ${selectedTool === tool
+          ? "bg-blue-600 text-white border-blue-600"
+          : "bg-white hover:bg-slate-100 border-slate-200"
         }
       `}
     >
@@ -49,8 +53,32 @@ function DrawPanel() {
         <div className="grid grid-cols-2 gap-3">
           {toolButton("pen", "✏️", "Pen")}
           {toolButton("eraser", "🧽", "Eraser")}
-          {toolButton("rectangle", "⬜", "Shape")}
           {toolButton("text", "🔤", "Text")}
+          <button
+            onClick={() => {
+              setSelectedTool("shape");
+              setSelectedShape("rectangle");
+            }}
+            className={`
+              flex flex-col
+              items-center
+              justify-center
+              rounded-2xl
+              p-3
+              transition
+              border
+              ${selectedTool === "shape"
+                          ? "bg-blue-600 text-white border-blue-600"
+                          : "bg-white hover:bg-slate-100 border-slate-200"
+                        }
+            `}
+          >
+            <span className="text-2xl">⬜</span>
+
+            <span className="text-xs mt-1 capitalize">
+              {selectedShape}
+            </span>
+          </button>
         </div>
       </div>
 

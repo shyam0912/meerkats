@@ -2,7 +2,9 @@ import { useState, type ReactNode } from "react";
 import { DrawingContext } from "./drawing-context";
 import type {
   DrawingTool,
+  ShapeType,
   Stroke,
+  Shape,
 } from "../types/drawing";
 
 interface Props {
@@ -13,6 +15,9 @@ export default function DrawingProvider({ children }: Props) {
   const [selectedTool, setSelectedTool] =
     useState<DrawingTool>("pen");
 
+  const [selectedShape, setSelectedShape] =
+    useState<ShapeType>("rectangle");
+
   const [strokeColor, setStrokeColor] =
     useState("#000000");
 
@@ -21,6 +26,9 @@ export default function DrawingProvider({ children }: Props) {
 
   const [strokes, setStrokes] =
     useState<Stroke[]>([]);
+
+  const [shapes, setShapes] =
+    useState<Shape[]>([]);
 
   // History
   const [history, setHistory] =
@@ -71,6 +79,26 @@ export default function DrawingProvider({ children }: Props) {
     });
   };
 
+  const addShape = (shape: Shape) => {
+    setShapes((prev) => [...prev, shape]);
+  };
+
+  const updateLastShape = (
+    updater: (shape: Shape) => Shape
+  ) => {
+    setShapes((prev) => {
+      if (prev.length === 0) return prev;
+
+      const copy = [...prev];
+
+      copy[copy.length - 1] = updater(
+        copy[copy.length - 1]
+      );
+
+      return copy;
+    });
+  };
+
   const undo = () => {
     if (historyIndex <= 0) return;
 
@@ -98,17 +126,23 @@ export default function DrawingProvider({ children }: Props) {
     <DrawingContext.Provider
       value={{
         selectedTool,
+        selectedShape,
         strokeColor,
         strokeWidth,
 
         strokes,
+        shapes,
 
         setSelectedTool,
+        setSelectedShape,
         setStrokeColor,
         setStrokeWidth,
 
         addStroke,
         updateLastStroke,
+
+        addShape,
+        updateLastShape,
 
         undo,
         redo,
