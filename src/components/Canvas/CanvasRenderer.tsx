@@ -1,10 +1,6 @@
 import LessonViewer from "../viewers/LessonViewer/LessonViewer";
 import DrawingCanvas from "../workspace/DrawingCanvas";
 import { contentViewer } from "../../data/contentViewer";
-import BackgroundLayer from "../layers/BackgroundLayer";
-import LessonLayer from "../layers/LessonLayer";
-import AnnotationLayer from "../layers/AnnotationLayer";
-import FloatingLayer from "../layers/FloatingLayer";
 
 interface CanvasRendererProps {
   selectedShelf: string;

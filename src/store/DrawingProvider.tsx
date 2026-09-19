@@ -1,155 +1,36 @@
-import { useState, type ReactNode } from "react";
+import { useCallback, useMemo, useReducer, useState, type ReactNode } from "react";
+import { createDocument, documentReducer, type DocumentOwner } from "../drawing/document";
+import type { DrawingTool, Stroke } from "../types/drawing";
 import { DrawingContext } from "./drawing-context";
-import type {
-  DrawingTool,
-  ShapeType,
-  Stroke,
-  Shape,
-} from "../types/drawing";
+import { useClassroom } from "./useClassroom";
 
-interface Props {
-  children: ReactNode;
+function SessionDrawingProvider({ children, owner }: { children: ReactNode; owner: DocumentOwner }) {
+  const [state, dispatch] = useReducer(documentReducer, owner,
+    (initialOwner) => createDocument(initialOwner, crypto.randomUUID()));
+  const [selectedTool, setSelectedTool] = useState<DrawingTool>("pen");
+  const [strokeColor, setStrokeColor] = useState("#000000");
+  const [strokeWidth, setStrokeWidth] = useState(3);
+  const [isInteracting, setInteracting] = useState(false);
+  const commitStroke = useCallback((stroke: Stroke) => dispatch({ type: "commit", stroke }), []);
+  const undo = useCallback(() => dispatch({ type: "undo" }), []);
+  const redo = useCallback(() => dispatch({ type: "redo" }), []);
+  const clearCanvas = useCallback(() => dispatch({ type: "clear" }), []);
+  const value = useMemo(() => ({
+    document: state.document, selectedTool, strokeColor, strokeWidth, isInteracting,
+    canUndo: state.past.length > 0, canRedo: state.future.length > 0,
+    setSelectedTool, setStrokeColor, setStrokeWidth, setInteracting,
+    commitStroke, undo, redo, clearCanvas,
+  }), [state, selectedTool, strokeColor, strokeWidth, isInteracting, commitStroke, undo, redo, clearCanvas]);
+  return <DrawingContext.Provider value={value}>{children}</DrawingContext.Provider>;
 }
 
-export default function DrawingProvider({ children }: Props) {
-  const [selectedTool, setSelectedTool] =
-    useState<DrawingTool>("pen");
-
-  const [selectedShape, setSelectedShape] =
-    useState<ShapeType>("rectangle");
-
-  const [strokeColor, setStrokeColor] =
-    useState("#000000");
-
-  const [strokeWidth, setStrokeWidth] =
-    useState(3);
-
-  const [strokes, setStrokes] =
-    useState<Stroke[]>([]);
-
-  const [shapes, setShapes] =
-    useState<Shape[]>([]);
-
-  // History
-  const [history, setHistory] =
-    useState<Stroke[][]>([]);
-
-  const [historyIndex, setHistoryIndex] =
-    useState(-1);
-
-  const saveHistory = (nextStrokes: Stroke[]) => {
-    const newHistory = history.slice(0, historyIndex + 1);
-
-    newHistory.push(nextStrokes);
-
-    setHistory(newHistory);
-    setHistoryIndex(newHistory.length - 1);
-  };
-
-  const addStroke = (stroke: Stroke) => {
-    setStrokes((prev) => {
-      const next = [...prev, stroke];
-      saveHistory(next);
-      return next;
-    });
-  };
-
-  const updateLastStroke = (
-    pointX: number,
-    pointY: number
-  ) => {
-    setStrokes((prev) => {
-      if (prev.length === 0) return prev;
-
-      const copy = [...prev];
-
-      const lastStroke = {
-        ...copy[copy.length - 1],
-      };
-
-      lastStroke.points = [
-        ...lastStroke.points,
-        pointX,
-        pointY,
-      ];
-
-      copy[copy.length - 1] = lastStroke;
-
-      return copy;
-    });
-  };
-
-  const addShape = (shape: Shape) => {
-    setShapes((prev) => [...prev, shape]);
-  };
-
-  const updateLastShape = (
-    updater: (shape: Shape) => Shape
-  ) => {
-    setShapes((prev) => {
-      if (prev.length === 0) return prev;
-
-      const copy = [...prev];
-
-      copy[copy.length - 1] = updater(
-        copy[copy.length - 1]
-      );
-
-      return copy;
-    });
-  };
-
-  const undo = () => {
-    if (historyIndex <= 0) return;
-
-    const newIndex = historyIndex - 1;
-
-    setHistoryIndex(newIndex);
-    setStrokes(history[newIndex]);
-  };
-
-  const redo = () => {
-    if (historyIndex >= history.length - 1) return;
-
-    const newIndex = historyIndex + 1;
-
-    setHistoryIndex(newIndex);
-    setStrokes(history[newIndex]);
-  };
-
-  const clearCanvas = () => {
-    setStrokes([]);
-    saveHistory([]);
-  };
-
+export default function DrawingProvider({ children }: { children: ReactNode }) {
+  const { sessionId, selectedClass, selectedSubject } = useClassroom();
   return (
-    <DrawingContext.Provider
-      value={{
-        selectedTool,
-        selectedShape,
-        strokeColor,
-        strokeWidth,
-
-        strokes,
-        shapes,
-
-        setSelectedTool,
-        setSelectedShape,
-        setStrokeColor,
-        setStrokeWidth,
-
-        addStroke,
-        updateLastStroke,
-
-        addShape,
-        updateLastShape,
-
-        undo,
-        redo,
-        clearCanvas,
-      }}
-    >
+    <SessionDrawingProvider key={sessionId} owner={{
+      sessionId, classId: selectedClass || null, subjectId: selectedSubject || null,
+    }}>
       {children}
-    </DrawingContext.Provider>
+    </SessionDrawingProvider>
   );
 }

@@ -8,14 +8,28 @@ export function ClassroomProvider({
 }) {
   const [selectedClass, setSelectedClass] = useState("");
   const [selectedSubject, setSelectedSubject] = useState("");
+  const [sessionId, setSessionId] = useState(() => crypto.randomUUID());
 
   return (
     <ClassroomContext.Provider
       value={{
         selectedClass,
         selectedSubject,
-        setSelectedClass,
-        setSelectedSubject,
+        sessionId,
+        setSelectedClass: (value) => {
+          setSelectedClass(value);
+          setSelectedSubject("");
+          setSessionId(crypto.randomUUID());
+        },
+        setSelectedSubject: (value) => {
+          setSelectedSubject(value);
+          setSessionId(crypto.randomUUID());
+        },
+        startQuickWorkspace: () => {
+          setSelectedClass("");
+          setSelectedSubject("");
+          setSessionId(crypto.randomUUID());
+        },
       }}
     >
       {children}

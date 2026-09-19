@@ -1,6 +1,8 @@
 import { createContext } from "react";
 
 export interface ClassroomContextType {
+  sessionId: string;
+  startQuickWorkspace: () => void;
   selectedClass: string;
   selectedSubject: string;
 

@@ -1,106 +1,31 @@
-import type { KonvaEventObject } from "konva/lib/Node";
-
-import { BaseTool } from "./tools/BaseTool";
 import { PenTool } from "./tools/PenTool";
 import { EraserTool } from "./tools/EraserTool";
-import { ShapeTool } from "./tools/ShapeTool";
-
-import type {
-  DrawingTool,
-  ShapeType,
-  Shape,
-  Stroke,
-} from "../types/drawing";
+import type { InkTool, InkSettings, Point } from "./tools/InkTool";
 
 export class ToolManager {
-  private activeTool: BaseTool | null = null;
+  private interaction: { pointerId: number; tool: InkTool } | null = null;
+  get pointerId() { return this.interaction?.pointerId ?? null; }
+  get draft() { return this.interaction?.tool.draft ?? null; }
 
-  configure({
-    selectedTool,
-    selectedShape,
-    strokeColor,
-    strokeWidth,
-
-    addStroke,
-    updateLastStroke,
-
-    addShape,
-    updateLastShape,
-  }: {
-    selectedTool: DrawingTool;
-
-    selectedShape: ShapeType;
-
-    strokeColor: string;
-
-    strokeWidth: number;
-
-    addStroke: (stroke: Stroke) => void;
-
-    updateLastStroke: (
-      x: number,
-      y: number
-    ) => void;
-
-    addShape: (shape: Shape) => void;
-
-    updateLastShape: (
-      updater: (shape: Shape) => Shape
-    ) => void;
-  }) {
-    switch (selectedTool) {
-      case "pen":
-        this.activeTool = new PenTool(
-          strokeColor,
-          strokeWidth,
-          addStroke,
-          updateLastStroke
-        );
-        break;
-
-      case "eraser":
-        this.activeTool = new EraserTool(
-          strokeWidth,
-          addStroke,
-          updateLastStroke
-        );
-        break;
-
-      case "shape":
-        this.activeTool = new ShapeTool(
-          selectedShape,
-          strokeColor,
-          strokeWidth,
-          addShape,
-          updateLastShape
-        );
-        break;
-
-      default:
-        this.activeTool = null;
-    }
+  begin(pointerId: number, settings: InkSettings, point: Point, objectId: string): boolean {
+    // Settings/callback rerenders must never replace the active gesture.
+    if (this.interaction) return false;
+    const tool = settings.tool === "pen"
+      ? new PenTool(objectId, point, settings) : new EraserTool(objectId, point, settings);
+    this.interaction = { pointerId, tool };
+    return true;
   }
-
-
-
-  onPointerDown(
-    e: KonvaEventObject<MouseEvent | TouchEvent>
-  ) {
-    console.log("ToolManager:", this.activeTool);
-
-    this.activeTool?.onPointerDown(e);
+  move(pointerId: number, point: Point) {
+    if (this.interaction?.pointerId === pointerId) this.interaction.tool.move(point);
   }
-
-
-  onPointerMove(
-    e: KonvaEventObject<MouseEvent | TouchEvent>
-  ) {
-    this.activeTool?.onPointerMove(e);
+  complete(pointerId: number, point: Point) {
+    if (this.interaction?.pointerId !== pointerId) return null;
+    this.interaction.tool.move(point);
+    const stroke = this.interaction.tool.complete();
+    this.interaction = null;
+    return stroke;
   }
-
-  onPointerUp(
-    e: KonvaEventObject<MouseEvent | TouchEvent>
-  ) {
-    this.activeTool?.onPointerUp(e);
+  cancel(pointerId = this.pointerId) {
+    if (this.interaction?.pointerId === pointerId) this.interaction = null;
   }
 }

@@ -1,8 +1,4 @@
-export type DrawingTool =
-  | "pen"
-  | "eraser"
-  | "shape"
-  | "text";
+export type DrawingTool = "pen" | "eraser";
 
 export type ShapeType =
   | "rectangle"
@@ -12,6 +8,7 @@ export type ShapeType =
 
 export interface Stroke {
   id: string;
+  kind: "ink";
   tool: "pen" | "eraser";
   color: string;
   width: number;
@@ -35,14 +32,4 @@ export interface Shape {
   fill?: string;
 }
 
-export interface DrawingState {
-  selectedTool: DrawingTool;
-
-  selectedShape: ShapeType;
-
-  strokeColor: string;
-  strokeWidth: number;
-
-  strokes: Stroke[];
-  shapes: Shape[];
-}
+// Shape definitions remain experimental; only ink is in the active document model.

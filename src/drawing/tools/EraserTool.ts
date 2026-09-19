@@ -1,68 +1,8 @@
-import type { KonvaEventObject } from "konva/lib/Node";
-import type { Stroke } from "../../types/drawing";
-import { BaseTool } from "./BaseTool";
+import { InkTool, type InkSettings, type Point } from "./InkTool";
 
-export class EraserTool extends BaseTool {
-
-  private strokeWidth: number;
-
-  private addStroke: (stroke: Stroke) => void;
-
-  private updateLastStroke: (
-    pointX: number,
-    pointY: number
-  ) => void;
-
-  constructor(
-    strokeWidth: number,
-    addStroke: (stroke: Stroke) => void,
-    updateLastStroke: (
-      pointX: number,
-      pointY: number
-    ) => void
-  ) {
-    super();
-
-    this.strokeWidth = strokeWidth;
-    this.addStroke = addStroke;
-    this.updateLastStroke = updateLastStroke;
-  }
-
-  setStrokeWidth(width: number) {
-    this.strokeWidth = width;
-  }
-
-  onPointerDown(
-    e: KonvaEventObject<MouseEvent | TouchEvent>
-  ) {
-    this.isDrawing = true;
-
-    const pos = this.getPointerPosition(e);
-
-    if (!pos) return;
-
-    this.addStroke({
-      id: Date.now().toString(),
-      tool: "eraser",
-      color: "#ffffff",
-      width: this.strokeWidth * 6,
-      points: [pos.x, pos.y],
-    });
-  }
-
-  onPointerMove(
-    e: KonvaEventObject<MouseEvent | TouchEvent>
-  ) {
-    if (!this.isDrawing) return;
-
-    const pos = this.getPointerPosition(e);
-
-    if (!pos) return;
-
-    this.updateLastStroke(pos.x, pos.y);
-  }
-
-  onPointerUp() {
-    this.isDrawing = false;
+/** Ink-only mask. It does not delete future text/media/interactive objects. */
+export class EraserTool extends InkTool {
+  constructor(id: string, point: Point, settings: InkSettings) {
+    super(id, point, "eraser", "#000000", settings.width * 6);
   }
 }

@@ -1,75 +1,44 @@
-# React + TypeScript + Vite
+# Meerkats Interactive Classroom
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+Teacher prototype for large interactive classroom panels. The current milestone implements a reliable, temporary whiteboard; it does not yet provide saved teaching sessions.
 
-Currently, two official plugins are available:
+## Development
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
+Use a Node.js version supported by the installed Vite version and the checked-in lockfile.
 
-## React Compiler
-
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
-
-## Expanding the ESLint configuration
-
-If you are developing a production application, we recommend updating the configuration to enable type-aware lint rules:
-
-```js
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
-
-      // Remove tseslint.configs.recommended and replace with this
-      tseslint.configs.recommendedTypeChecked,
-      // Alternatively, use this for stricter rules
-      tseslint.configs.strictTypeChecked,
-      // Optionally, add this for stylistic rules
-      tseslint.configs.stylisticTypeChecked,
-
-      // Other configs...
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
-
+```sh
+npm ci
+npm run dev
 ```
 
-You can also install [eslint-plugin-react-x](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-x) and [eslint-plugin-react-dom](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-dom) for React-specific lint rules:
+Production commands remain `npm run build` and `npm run preview`.
 
-```js
-// eslint.config.js
-import reactX from 'eslint-plugin-react-x'
-import reactDom from 'eslint-plugin-react-dom'
+## Validation
 
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
-      // Enable lint rules for React
-      reactX.configs['recommended-typescript'],
-      // Enable lint rules for React DOM
-      reactDom.configs.recommended,
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
-
+```sh
+npm run typecheck
+npm run lint
+npm test
+npx playwright install chromium
+npm run test:e2e
+npm run build
 ```
+
+Vitest tests document/history and tool lifecycle independently of React. Playwright tests rendered ink, pointer capture, touch emulation, cancellation, history, confirmation, and context isolation in Chromium. The browser suite starts Vite on 127.0.0.1:5173; keep that port free, or intentionally reuse this project's already-running development server. Browser binaries are development-only downloads.
+
+## Current behavior
+
+Class → Subject → Workspace, or Quick Workspace.
+
+Pen, ink Eraser, color, width, Undo, Redo, and confirmed Clear are available. A click/tap produces a visible dot. Completed gestures enter history; cancelled drafts do not. Undo is bounded to the latest 100 operations.
+
+Each class/subject selection and Quick Workspace starts a new session and board. Refreshing the page discards the in-memory session. Returning from an existing lesson shelf to Whiteboard within the same session preserves the board. There is no saving, backend, authentication, or offline recovery yet.
+
+Rectangle/Text are outside the active drawing flow. Legacy content and shelf viewers remain prototype scaffolding, not a completed lesson engine.
+
+## Engineering documents
+
+- [Phase 0–1 implementation and verification](docs/phase-0-1.md)
+- [Backend architecture recommendation](docs/backend-architecture.md)
+
+`PROJECT_PROGRESS.md` is the historical project roadmap; use the milestone document for current verified status.

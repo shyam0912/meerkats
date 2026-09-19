@@ -4,7 +4,7 @@ import { useClassroom } from "../../store/useClassroom";
 import { subjectTools } from "../../data/subjectTools";
 import { subjectShelf } from "../../data/subjectShelf";
 import { subjectContent } from "../../data/subjectContent";
-import CanvasRenderer from "../../components/canvas/CanvasRenderer";
+import CanvasRenderer from "../../components/Canvas/CanvasRenderer";
 import LessonShelf from "../../components/workspace/LessonShelf";
 import WorkspaceTopBar from "../../components/workspace/WorkspaceTopBar";
 import ToolDock from "../../components/workspace/ToolDock";

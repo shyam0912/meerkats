@@ -1,7 +1,9 @@
 import { useNavigate } from "react-router-dom";
+import { useClassroom } from "../../store/useClassroom";
 
 function Home() {
   const navigate = useNavigate();
+  const { startQuickWorkspace } = useClassroom();
 
   return (
     <div className="min-h-screen bg-slate-50 flex items-center justify-center p-8">
@@ -27,7 +29,7 @@ function Home() {
           </button>
 
           <button
-            onClick={() => navigate("/workspace")}
+            onClick={() => { startQuickWorkspace(); navigate("/workspace"); }}
             className="w-full h-32 rounded-3xl bg-teal-600 text-white text-3xl font-semibold shadow-lg hover:scale-[1.02] transition"
           >
             🖍 Quick Workspace

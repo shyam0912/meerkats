@@ -1,8 +1,11 @@
 import useDrawing from "../../store/useDrawing";
 import useWorkspaceUI from "../../store/useWorkspaceUI";
 import type { WorkspacePanel } from "../../store/workspace-ui-context";
+import { useState } from "react";
+import ConfirmDialog from "../common/ConfirmDialog";
 
 function ToolDock() {
+  const [confirmClear, setConfirmClear] = useState(false);
   const {
     activePanel,
     togglePanel,
@@ -12,6 +15,7 @@ function ToolDock() {
     undo,
     redo,
     clearCanvas,
+    canUndo, canRedo, isInteracting, document,
   } = useDrawing();
 
   const panels: {
@@ -60,6 +64,8 @@ function ToolDock() {
         {panels.map((panel) => (
           <button
             key={panel.id}
+            disabled={panel.id !== "draw"}
+            aria-label={panel.id === "draw" ? "Draw" : `${panel.label} (coming later)`}
             title={panel.label}
             onClick={() => togglePanel(panel.id)}
             className={`
@@ -70,6 +76,7 @@ function ToolDock() {
               justify-center
               transition-all
               duration-200
+              disabled:opacity-40 disabled:cursor-not-allowed shrink-0
               ${activePanel === panel.id
                 ? "bg-blue-600 text-white shadow-lg scale-105"
                 : "bg-slate-100 hover:bg-slate-200"
@@ -93,27 +100,33 @@ function ToolDock() {
 
         <button
           onClick={undo}
-          className="w-full h-12 rounded-xl bg-slate-100 hover:bg-slate-200"
+          aria-label="Undo" disabled={!canUndo || isInteracting}
+          className="w-full h-12 rounded-xl bg-slate-100 hover:bg-slate-200 disabled:opacity-40"
         >
-          ↩
+          Undo
         </button>
 
         <button
           onClick={redo}
-          className="w-full h-12 rounded-xl bg-slate-100 hover:bg-slate-200"
+          aria-label="Redo" disabled={!canRedo || isInteracting}
+          className="w-full h-12 rounded-xl bg-slate-100 hover:bg-slate-200 disabled:opacity-40"
         >
-          ↪
+          Redo
         </button>
 
         <button
-          onClick={clearCanvas}
-          className="w-full h-12 rounded-xl bg-red-100 hover:bg-red-200"
+          onClick={() => setConfirmClear(true)}
+          aria-label="Clear ink" disabled={document.objects.length === 0 || isInteracting}
+          className="w-full h-12 rounded-xl bg-red-100 hover:bg-red-200 disabled:opacity-40"
         >
-          🗑
+          Clear
         </button>
 
       </div>
-
+      <ConfirmDialog open={confirmClear} title="Clear this board?"
+        message="All ink on this board will be cleared. You can restore it with Undo."
+        confirmText="Clear ink" onCancel={() => setConfirmClear(false)}
+        onConfirm={() => { clearCanvas(); setConfirmClear(false); }} />
     </div>
   );
 }

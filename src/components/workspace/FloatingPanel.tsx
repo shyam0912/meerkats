@@ -63,6 +63,7 @@ function FloatingPanel() {
         absolute
         left-28
         top-6
+        bottom-3 flex flex-col max-h-fit
         z-50
         w-96
         rounded-3xl
@@ -80,15 +81,16 @@ function FloatingPanel() {
         </h2>
 
         <button
+          aria-label="Close drawing options"
           onClick={closePanel}
-          className="text-slate-500 hover:text-red-500 text-xl"
+          className="text-slate-500 hover:text-red-500 text-xl min-w-12 min-h-12"
         >
           ✕
         </button>
       </div>
 
       {/* Body */}
-      <div className="p-6 max-h-[70vh] overflow-y-auto">
+      <div className="p-6 min-h-0 overflow-y-auto">
         {renderContent()}
       </div>
     </div>

@@ -15,7 +15,8 @@ function SmartTools({ tools }: Props) {
         {tools.map((tool) => (
           <button
             key={tool}
-            className="w-full h-16 bg-slate-100 rounded-xl hover:bg-slate-200"
+            disabled title="Not available in this milestone"
+            className="w-full h-16 bg-slate-100 rounded-xl opacity-40 cursor-not-allowed"
           >
             {tool}
           </button>
