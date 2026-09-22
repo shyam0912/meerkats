@@ -1,9 +1,12 @@
 import { createContext } from "react";
 import type { DrawingDocument } from "../drawing/document";
 import type { DrawingTool, Stroke } from "../types/drawing";
+import type { TeachingMode } from "../drawing/session";
 
 export interface DrawingContextType {
   document: DrawingDocument;
+  mode: TeachingMode;
+  setMode: (mode: TeachingMode) => void;
   selectedTool: DrawingTool;
   strokeColor: string;
   strokeWidth: number;

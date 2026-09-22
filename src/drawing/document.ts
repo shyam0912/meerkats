@@ -1,15 +1,18 @@
 import type { Stroke } from "../types/drawing";
+import { SCENE_BOUNDS, type SceneBounds } from "./scene";
 
 export interface DocumentOwner {
   sessionId: string;
   classId: string | null;
   subjectId: string | null;
+  target?: { kind: "whiteboard" } | { kind: "annotation"; sceneId: string };
 }
 export interface DrawingDocument {
   schemaVersion: 1;
   id: string;
   owner: DocumentOwner;
   revision: number;
+  bounds: SceneBounds;
   objects: readonly Stroke[];
 }
 export type DrawingOperation =
@@ -30,7 +33,7 @@ export const HISTORY_LIMIT = 100;
 
 export function createDocument(owner: DocumentOwner, id: string): DocumentState {
   return {
-    document: { schemaVersion: 1, id, owner, revision: 0, objects: [] },
+    document: { schemaVersion: 1, id, owner, bounds: { ...SCENE_BOUNDS }, revision: 0, objects: [] },
     past: [], future: [],
   };
 }

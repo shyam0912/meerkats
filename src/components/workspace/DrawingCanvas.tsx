@@ -3,10 +3,10 @@ import type Konva from "konva";
 import { useCallback, useEffect, useRef, useState, type PointerEvent as ReactPointerEvent } from "react";
 import useDrawing from "../../store/useDrawing";
 import { ToolManager } from "../../drawing/ToolManager";
-import BackgroundLayer from "../layers/BackgroundLayer";
+import { scenePoint } from "../../drawing/scene";
 import AnnotationLayer from "../layers/AnnotationLayer";
 
-export default function DrawingCanvas() {
+export default function DrawingCanvas({ enabled = true, transparent = false }: { enabled?: boolean; transparent?: boolean }) {
   const containerRef = useRef<HTMLDivElement>(null);
   const draftLine = useRef<Konva.Line>(null);
   const draftDot = useRef<Konva.Circle>(null);
@@ -76,18 +76,15 @@ export default function DrawingCanvas() {
       window.document.removeEventListener("visibilitychange", onVisibility);
       cancelInteraction();
     };
-  }, [cancelInteraction]);
+  }, [cancelInteraction, enabled]);
 
   const point = (event: { clientX: number; clientY: number }) => {
     const bounds = containerRef.current!.getBoundingClientRect();
-    return {
-      x: Math.max(0, Math.min(size.width, (event.clientX - bounds.left) * size.width / bounds.width)),
-      y: Math.max(0, Math.min(size.height, (event.clientY - bounds.top) * size.height / bounds.height)),
-    };
+    return scenePoint({ x: event.clientX, y: event.clientY }, bounds, document.bounds);
   };
 
   const begin = (event: ReactPointerEvent<HTMLDivElement>) => {
-    if (event.button !== 0 || !event.isPrimary || size.width <= 1 || size.height <= 1) return;
+    if (!enabled || event.button !== 0 || !event.isPrimary || size.width <= 1 || size.height <= 1) return;
     if (!manager.begin(event.pointerId,
       { tool: selectedTool, color: strokeColor, width: strokeWidth }, point(event), crypto.randomUUID())) return;
     try {
@@ -125,18 +122,18 @@ export default function DrawingCanvas() {
   };
 
   return (
-    <div ref={containerRef} role="region" aria-label="Whiteboard drawing surface" tabIndex={0}
+    <div ref={containerRef} role="region" aria-label={transparent ? "Content annotation surface" : "Whiteboard drawing surface"} tabIndex={enabled ? 0 : -1}
       data-document-id={document.id} data-session-id={document.owner.sessionId}
       data-ink-count={document.objects.length} data-revision={document.revision}
-      className="relative w-full h-full rounded-3xl overflow-hidden outline-none focus-visible:ring-2 focus-visible:ring-blue-600"
-      style={{ touchAction: "none", userSelect: "none" }}
+      data-input-owner={enabled ? "ink" : "content"}
+      className="absolute inset-0 overflow-hidden outline-none focus-visible:ring-2 focus-visible:ring-teal-600"
+      style={{ touchAction: enabled ? "none" : "auto", userSelect: "none", pointerEvents: enabled ? "auto" : "none", background: transparent ? "transparent" : "white" }}
       onPointerDown={begin} onPointerMove={move} onPointerUp={complete}
       onPointerCancel={(event) => { if (manager.pointerId === event.pointerId) cancelInteraction(); }}
       onLostPointerCapture={(event) => { if (manager.pointerId === event.pointerId) cancelInteraction(); }}
       onKeyDown={(event) => { if (event.key === "Escape") cancelInteraction(); }}>
-      <BackgroundLayer />
       <Stage width={size.width} height={size.height} className="absolute inset-0" listening={false}>
-        <Layer listening={false}>
+        <Layer listening={false} scaleX={size.width / document.bounds.width} scaleY={size.height / document.bounds.height}>
           <AnnotationLayer objects={document.objects} />
           {/* Keep eraser draft on the same layer as ink so destination-out previews correctly. */}
           <Line ref={draftLine} visible={false} tension={0.5} lineCap="round" lineJoin="round" listening={false} />
