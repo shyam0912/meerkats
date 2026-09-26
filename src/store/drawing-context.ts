@@ -4,6 +4,11 @@ import type { DrawingTool, Stroke } from "../types/drawing";
 import type { TeachingMode } from "../drawing/session";
 
 export interface DrawingContextType {
+  saveStatus: string;
+  storageChecked: boolean;
+  activatePersistence: () => void;
+  selection: "circle" | "triangle" | "square" | null;
+  setSelection: (value: "circle" | "triangle" | "square" | null) => void;
   document: DrawingDocument;
   mode: TeachingMode;
   setMode: (mode: TeachingMode) => void;

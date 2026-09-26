@@ -3,7 +3,7 @@ import useDrawing from "../../store/useDrawing";
 
 export default function SessionHeader({ onBack }: { onBack: () => void }) {
   const { selectedClass, selectedSubject } = useClassroom();
-  const { mode } = useDrawing();
+  const { mode, saveStatus } = useDrawing();
   return <header className="session-header">
     <button className="workspace-button back-button" onClick={onBack}>← Back</button>
     <div className="session-context">
@@ -12,7 +12,7 @@ export default function SessionHeader({ onBack }: { onBack: () => void }) {
     </div>
     <div className="session-status">
       <strong>{mode === "whiteboard" ? "Whiteboard" : "Shape studio · Demo"}</strong>
-      <span>Temporary session · Not saved</span>
+      <span role="status" aria-live="polite">{saveStatus}</span>
     </div>
   </header>;
 }

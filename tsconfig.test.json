@@ -3,8 +3,13 @@
     "target": "ES2023",
     "module": "ESNext",
     "moduleResolution": "bundler",
-    "lib": ["ES2023", "DOM"],
-    "types": ["node"],
+    "lib": [
+      "ES2023",
+      "DOM"
+    ],
+    "types": [
+      "node"
+    ],
     "strict": true,
     "noUncheckedIndexedAccess": true,
     "noUnusedLocals": true,
@@ -12,5 +17,10 @@
     "skipLibCheck": true,
     "noEmit": true
   },
-  "include": ["tests", "playwright.config.ts", "vitest.config.ts"]
+  "include": [
+    "tests",
+    "playwright.config.ts",
+    "vitest.config.ts",
+    "playwright.api.config.ts"
+  ]
 }

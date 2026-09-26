@@ -1,7 +1,9 @@
 import { createContext } from "react";
+import type { LocalRecord } from "../persistence/database";
 
 export interface ClassroomContextType {
   sessionId: string;
+  restored?: LocalRecord;
   startQuickWorkspace: () => void;
   selectedClass: string;
   selectedSubject: string;

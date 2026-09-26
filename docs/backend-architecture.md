@@ -2,6 +2,8 @@
 
 Status: recommendation for review; no backend, database, authentication, storage service, or synchronization engine is implemented in Phase 0–1.
 
+Phase 3 implementation note: this document preserves the original long-term recommendation. The approved local backend/durability subset is now described in [phase-3.md](phase-3.md). Production OIDC, S3 storage, deployment, full offline packaging and school administration remain future work; earlier milestone-status statements below are historical.
+
 ## 1. Decision and fit
 
 Use a TypeScript modular monolith: supported Node.js LTS, Fastify, PostgreSQL, Drizzle ORM with node-postgres, private S3-compatible object storage, and an established OpenID Connect identity provider. Pin mutually supported versions when the backend phase begins.
