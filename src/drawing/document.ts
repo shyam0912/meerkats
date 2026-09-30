@@ -5,7 +5,7 @@ export interface DocumentOwner {
   sessionId: string;
   classId: string | null;
   subjectId: string | null;
-  target?: { kind: "whiteboard" } | { kind: "annotation"; sceneId: string };
+  target?: { kind: "whiteboard" } | { kind: "annotation"; sceneId: string; lessonVersionId?: string; activityId?: string };
 }
 export interface DrawingDocument {
   schemaVersion: 1;

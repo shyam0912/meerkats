@@ -66,8 +66,10 @@ export class PersistenceController {
     this.running = true;
     try {
       const savedDocs = [this.record.snapshot.whiteboard, ...Object.values(this.record.snapshot.annotations)];
-      if (savedDocs.every(d => !this.record.sync[d.id]?.pending && this.record.sync[d.id]?.acknowledgedLocalRevision === d.localRevision)) {
-        this.notify(this.latest === this.durableSnapshot ? 'Ink synced · Context saved on device' : 'Saving on device');
+      const syncedMessage = this.record.snapshot.lesson ? 'Lesson and ink synced' : 'Ink synced · Context saved on device';
+      const progressSynced = !this.record.snapshot.lesson || (!this.record.progressSync?.pending && this.record.progressSync?.acknowledgedLocalRevision === this.record.snapshot.lesson.progress.localRevision);
+      if (progressSynced && savedDocs.every(d => !this.record.sync[d.id]?.pending && this.record.sync[d.id]?.acknowledgedLocalRevision === d.localRevision)) {
+        this.notify(this.latest === this.durableSnapshot ? syncedMessage : 'Saving on device');
         return;
       }
       this.notify('Saved on this device · Syncing ink');
@@ -92,8 +94,28 @@ export class PersistenceController {
         const acknowledgedLocalRevision = pending.document.localRevision;
         await this.transact(record => ({ ...record, sync: { ...record.sync, [doc.id]: { serverRevision: ack.serverRevision, acknowledgedLocalRevision } } }));
       }
+      while (!this.stopped && !this.localFailure && this.record.snapshot.lesson &&
+        (this.record.progressSync?.pending || this.record.progressSync?.acknowledgedLocalRevision !== this.record.snapshot.lesson.progress.localRevision)) {
+        if (!this.remote.saveProgress) throw new SaveError(422);
+        let pending = this.record.progressSync?.pending;
+        if (!pending) {
+          pending = { mutationId: crypto.randomUUID(), baseServerRevision: this.record.progressSync?.serverRevision ?? 0, progress: this.record.snapshot.lesson.progress };
+          const exact = pending;
+          await this.transact(record => ({ ...record, progressSync: { serverRevision: exact.baseServerRevision,
+            acknowledgedLocalRevision: record.progressSync?.acknowledgedLocalRevision ?? -1, pending: exact } }));
+        }
+        const ack = await this.remote.saveProgress(this.record.snapshot.identity.id, pending);
+        if (ack.mutationId !== pending.mutationId || ack.serverRevision !== pending.baseServerRevision + 1) throw new SaveError(422);
+        const acknowledgedLocalRevision = pending.progress.localRevision;
+        await this.transact(record => ({ ...record, progressSync: { serverRevision: ack.serverRevision, acknowledgedLocalRevision } }));
+      }
       this.attempts = 0;
-      if (!this.localFailure && !this.stopped) this.notify(this.latest === this.durableSnapshot ? 'Ink synced · Context saved on device' : 'Saving on device');
+      if (!this.localFailure && !this.stopped) {
+        const allDocs = [this.record.snapshot.whiteboard, ...Object.values(this.record.snapshot.annotations)];
+        const complete = allDocs.every(d => !this.record.sync[d.id]?.pending && this.record.sync[d.id]?.acknowledgedLocalRevision === d.localRevision);
+        this.notify(this.latest === this.durableSnapshot && complete ? syncedMessage : 'Saving on device');
+        if (!complete) { clearTimeout(this.retry); this.retry = setTimeout(() => { void this.sync(); }, 0); }
+      }
     } catch (error) {
       this.blocked = error instanceof SaveError && error.status >= 400 && error.status < 500 && error.status !== 408 && error.status !== 429;
       if (error instanceof LocalConflict) { this.localFailure = true; this.notify('Needs attention · Session open in another tab'); }

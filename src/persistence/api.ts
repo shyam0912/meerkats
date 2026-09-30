@@ -1,4 +1,5 @@
 import { acknowledgementSchema, sessionResponseSchema, sessionSchema, type SaveRequest, type SessionIdentity } from '../../contracts';
+import { progressAckSchema, type ProgressSave } from '../../contracts/lesson';
 export class SaveError extends Error {
   status: number;
   constructor(status: number) { super(status === 409 ? 'Server conflict: local work retained' : 'Server save unavailable'); this.status = status; }
@@ -13,5 +14,6 @@ export const api = {
   create: async (identity: SessionIdentity) => sessionSchema.parse(await request('/sessions', 'POST', identity)),
   get: async (id: string) => sessionResponseSchema.parse(await request(`/sessions/${id}`)),
   save: async (sessionId: string, input: SaveRequest) => acknowledgementSchema.parse(await request(`/sessions/${sessionId}/documents/${input.document.id}`, 'PUT', input)),
+  saveProgress: async (sessionId: string, input: ProgressSave) => progressAckSchema.parse(await request(`/sessions/${sessionId}/progress`, 'PUT', input)),
 };
-export type SessionApi = typeof api;
+export type SessionApi = Omit<typeof api, 'saveProgress'> & Partial<Pick<typeof api, 'saveProgress'>>;

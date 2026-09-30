@@ -8,6 +8,13 @@
       "when": 1790157293631,
       "tag": "0000_youthful_wrecker",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1790673944415,
+      "tag": "0001_even_white_queen",
+      "breakpoints": true
     }
   ]
 }

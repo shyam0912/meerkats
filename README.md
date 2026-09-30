@@ -50,3 +50,10 @@ Rectangle/Text are outside the active drawing flow. The old sidebar, dock and sh
 - [Phase 3 backend, durability and development setup](docs/phase-3.md)
 
 `PROJECT_PROGRESS.md` is the historical project roadmap; use the milestone document for current verified status.
+# Phase 4 lesson prototype
+
+Start Teaching now opens a small original demo catalog: Demo class → Visual exploration → Observe and describe → A closer look at shapes. The lesson has explain, explore and reveal activities. Existing class-specific standalone boards and Quick Workspace remain available.
+
+Apply the new migration and seed before running with `VITE_API_ENABLED=true`: in `server/`, run `npm run db:migrate` then `npm run db:seed` with the local database running. Without API mode the catalog uses the bundled neutral fixture and session changes remain local. The loaded lesson/version, activity state and ink survive reload; this is not a full offline application package.
+
+See [the Phase 4 report](docs/phase-4.md) for architecture, validation, file inventory and limitations.

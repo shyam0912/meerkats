@@ -22,7 +22,7 @@ function Home() {
         <div className="space-y-6">
           
           <button
-            onClick={() => navigate("/classes")}
+            onClick={() => navigate("/catalog")}
             className="w-full h-32 rounded-3xl bg-blue-900 text-white text-3xl font-semibold shadow-lg hover:scale-[1.02] transition"
           >
             🚀 Start Teaching

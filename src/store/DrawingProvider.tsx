@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useReducer, useState, type ReactNode } from "react";
 import type { DocumentOwner } from "../drawing/document";
-import { activeDocument, createDrawingSession, sessionReducer, type TeachingMode } from "../drawing/session";
+import { activeDocument, createDrawingSession, createLessonSession, sessionReducer, type TeachingMode } from "../drawing/session";
+import type { LessonVersion, ActivityState } from '../../contracts/lesson';
 import type { DrawingTool, Stroke } from "../types/drawing";
 import { DrawingContext } from "./drawing-context";
 import { useClassroom } from "./useClassroom";
@@ -11,11 +12,11 @@ import { api } from "../persistence/api";
 import type { LocalRecord } from "../persistence/database";
 import type { SessionIdentity } from "../../contracts";
 
-function SessionDrawingProvider({ children, owner, identity, restored }: {
-  children: ReactNode; owner: DocumentOwner; identity: SessionIdentity; restored?: LocalRecord;
+function SessionDrawingProvider({ children, owner, identity, restored, lessonVersion }: {
+  children: ReactNode; owner: DocumentOwner; identity: SessionIdentity; restored?: LocalRecord; lessonVersion?: LessonVersion;
 }) {
   const [session, dispatch] = useReducer(sessionReducer, owner, initialOwner => restored
-    ? deserializeSession(restored.snapshot) : createDrawingSession(initialOwner, {
+    ? deserializeSession(restored.snapshot) : lessonVersion ? createLessonSession(initialOwner, lessonVersion) : createDrawingSession(initialOwner, {
       whiteboard: crypto.randomUUID(), annotation: crypto.randomUUID(),
     }));
   const state = activeDocument(session);
@@ -49,28 +50,31 @@ function SessionDrawingProvider({ children, owner, identity, restored }: {
     };
   }, [persistence]);
   const setMode = useCallback((mode: TeachingMode) => dispatch({ type: "mode", mode }), []);
+  const selectActivity = useCallback((id: string) => dispatch({ type: 'activity', id }), []);
+  const updateActivity = useCallback((id: string, state: ActivityState) => dispatch({ type: 'activity-state', id, state }), []);
   const commitStroke = useCallback((stroke: Stroke) =>
     dispatch({ type: "document", documentId, action: { type: "commit", stroke } }), [documentId]);
   const undo = useCallback(() => dispatch({ type: "document", documentId, action: { type: "undo" } }), [documentId]);
   const redo = useCallback(() => dispatch({ type: "document", documentId, action: { type: "redo" } }), [documentId]);
   const clearCanvas = useCallback(() => dispatch({ type: "document", documentId, action: { type: "clear" } }), [documentId]);
   const value = useMemo(() => ({
+    lesson: session.lesson, selectActivity, updateActivity,
     document: state.document, mode: session.mode, setMode, selectedTool, strokeColor, strokeWidth, isInteracting,
     canUndo: state.past.length > 0, canRedo: state.future.length > 0,
     setSelectedTool, setStrokeColor, setStrokeWidth, setInteracting,
     commitStroke, undo, redo, clearCanvas, saveStatus, storageChecked, selection, setSelection, activatePersistence,
-  }), [state, session.mode, setMode, selectedTool, strokeColor, strokeWidth, isInteracting, commitStroke, undo, redo, clearCanvas, saveStatus, storageChecked, selection, activatePersistence]);
+  }), [state, session.mode, session.lesson, selectActivity, updateActivity, setMode, selectedTool, strokeColor, strokeWidth, isInteracting, commitStroke, undo, redo, clearCanvas, saveStatus, storageChecked, selection, activatePersistence]);
   return <DrawingContext.Provider value={value}>{children}</DrawingContext.Provider>;
 }
 export default function DrawingProvider({ children }: { children: ReactNode }) {
-  const { sessionId, selectedClass, selectedSubject, restored } = useClassroom();
+  const { sessionId, selectedClass, selectedSubject, restored, lessonLaunch } = useClassroom();
   const identity = useMemo(() => restored?.snapshot.identity ?? ({
-    id: sessionId, context: {
-      classId: classIds[selectedClass] ?? null, subjectId: subjectIds[selectedSubject] ?? null,
+    id: sessionId, ...(lessonLaunch ? { lessonVersionId: lessonLaunch.version.id } : {}), context: {
+      classId: lessonLaunch?.definition.classLevelId ?? classIds[selectedClass] ?? null, subjectId: lessonLaunch?.definition.subjectId ?? subjectIds[selectedSubject] ?? null,
       classLabel: selectedClass, subjectLabel: selectedSubject,
     },
-  }), [sessionId, selectedClass, selectedSubject, restored]);
-  return <SessionDrawingProvider key={sessionId} identity={identity} restored={restored} owner={{
+  }), [sessionId, selectedClass, selectedSubject, restored, lessonLaunch]);
+  return <SessionDrawingProvider key={sessionId} identity={identity} restored={restored} lessonVersion={lessonLaunch?.version} owner={{
     sessionId, classId: identity.context.classId, subjectId: identity.context.subjectId,
   }}>{children}</SessionDrawingProvider>;
 }

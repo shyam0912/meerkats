@@ -5,11 +5,14 @@ import { acknowledgementSchema, MAX_SNAPSHOT_BYTES, saveRequestSchema, sessionRe
 import type { Config } from './config/env.js';
 import type { Database } from './db/connection.js';
 import { ApiError, sessionService } from './modules/sessions.js';
+import { catalogService } from './modules/catalog.js';
+import { catalogSchema, lessonVersionSchema, progressAckSchema, progressSaveSchema } from '../../contracts/lesson.js';
 
 export function buildApp(db: Database, config: Config, logging = false) {
   const app = Fastify({ logger: logging ? { redact: ['req.headers.authorization', 'req.headers.cookie'], serializers: { req: req => ({ method: req.method, url: req.url }) } } : false,
     bodyLimit: MAX_SNAPSHOT_BYTES + 4096, requestTimeout: 15000 });
   const service = sessionService(db, config);
+  const catalog = catalogService(db);
   app.setValidatorCompiler(({ schema }) => data => {
     const result = (schema as z.ZodType).safeParse(data);
     return result.success ? { value: result.data } : { error: new Error('Invalid request') };
@@ -38,6 +41,10 @@ export function buildApp(db: Database, config: Config, logging = false) {
   });
   app.register(async secured => {
     secured.addHook('preHandler', async () => { await service.authorize(); });
+    secured.get('/api/v1/catalog', { schema: { response: { 200: catalogSchema } } }, () => catalog.catalog());
+    secured.get('/api/v1/lesson-versions/:id', { schema: { params: z.object({ id: uuid }), response: { 200: lessonVersionSchema } } }, request => catalog.version((request.params as { id: string }).id));
+    secured.put('/api/v1/sessions/:sessionId/progress', { schema: { params: z.object({ sessionId: uuid }), body: progressSaveSchema, response: { 200: progressAckSchema } } },
+      request => service.progress((request.params as { sessionId: string }).sessionId, progressSaveSchema.parse(request.body)));
     secured.post('/api/v1/sessions', { schema: { body: sessionSchema, response: { 200: sessionSchema } } }, async request => service.create(sessionSchema.parse(request.body)));
     secured.get('/api/v1/sessions/:sessionId', { schema: { params: z.object({ sessionId: uuid }), response: { 200: sessionResponseSchema } } }, async request => service.get((request.params as { sessionId: string }).sessionId));
     secured.put('/api/v1/sessions/:sessionId/documents/:documentId', {

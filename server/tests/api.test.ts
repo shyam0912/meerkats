@@ -13,6 +13,9 @@ import { buildApp } from '../src/app.js';
 import type { SaveRequest } from '../../contracts/index.js';
 import { memberships } from '../src/db/schema.js';
 import { eq } from 'drizzle-orm';
+import { seedCatalog, publishVersion } from '../src/modules/catalog.js';
+import { DEMO, demoVersion } from '../../contracts/demo.js';
+import { catalogSchema, initialProgress, lessonVersionSchema, type ProgressSave } from '../../contracts/lesson.js';
 
 let postgres: EmbeddedPostgres;
 let connection: ReturnType<typeof connect>;
@@ -47,6 +50,7 @@ beforeAll(async () => {
   const url = `postgresql://postgres:${password}@127.0.0.1:${port}/meerkats_test`;
   await applyMigrations(url); await applyMigrations(url);
   connection = connect(url);
+  await seedCatalog(connection.db);
   const config = parseEnv({ NODE_ENV: 'test', DATABASE_URL: url, DEV_IDENTITY_ENABLED: 'true', DEV_USER_ID: userId,
     DEV_SCHOOL_ID: schoolId, ALLOWED_ORIGIN: 'http://127.0.0.1:5173' });
   await seedIdentity(connection.db, config); app = buildApp(connection.db, config);
@@ -140,5 +144,83 @@ describe('real PostgreSQL API', () => {
     const second = (await other.inject(`/api/v1/sessions/${secondSession.id}`)).json();
     for (const session of [first, second])
       for (const document of session.documents) expect(document.document.owner.sessionId).toBe(session.id);
+  });
+});
+
+describe('Phase 4 catalog, immutable lessons and durable activity progress', () => {
+  const lessonIdentity = () => ({ id: randomUUID(), lessonVersionId: DEMO.version,
+    context: { classId: DEMO.class, subjectId: DEMO.subject, classLabel: 'Demo class', subjectLabel: 'Visual exploration' } });
+  async function lessonSession() {
+    const session = lessonIdentity();
+    expect((await app.inject({ method: 'POST', url: '/api/v1/sessions', payload: session })).statusCode).toBe(200);
+    return session;
+  }
+  const progressBody = (): ProgressSave => ({ mutationId: randomUUID(), baseServerRevision: 0, progress: initialProgress(demoVersion) });
+  const progressPut = (id: string, payload: ProgressSave, client = app) => client.inject({ method: 'PUT', url: `/api/v1/sessions/${id}/progress`, payload });
+  it('retrieves the ordered shared neutral catalog and exact published version', async () => {
+    const response = await app.inject('/api/v1/catalog'); expect(response.statusCode).toBe(200);
+    const catalog = catalogSchema.parse(response.json()); expect(catalog.nodes.map(n => n.kind)).toContain('topic');
+    expect(catalog.lessons[0]?.publishedVersionId).toBe(DEMO.version);
+    expect(lessonVersionSchema.parse((await app.inject(`/api/v1/lesson-versions/${DEMO.version}`)).json())).toEqual(demoVersion);
+    expect((await app.inject(`/api/v1/lesson-versions/${randomUUID()}`)).statusCode).toBe(404);
+  });
+  it('denies catalog access without active membership', async () => {
+    await connection.db.update(memberships).set({ active: 0 }).where(eq(memberships.schoolId, schoolId));
+    try {
+      expect((await app.inject('/api/v1/catalog')).statusCode).toBe(403);
+      expect((await app.inject(`/api/v1/lesson-versions/${DEMO.version}`)).statusCode).toBe(403);
+    } finally { await connection.db.update(memberships).set({ active: 1 }).where(eq(memberships.schoolId, schoolId)); }
+  });
+  it('rejects malformed definitions, unknown kinds and unsupported schemas at publication', async () => {
+    await expect(publishVersion(connection.db, { ...demoVersion, schemaVersion: 99 })).rejects.toThrow();
+    await expect(publishVersion(connection.db, { ...demoVersion, activities: [{ ...demoVersion.activities[0], kind: 'unknown' }] })).rejects.toThrow();
+    await expect(publishVersion(connection.db, { ...demoVersion, activities: [] })).rejects.toThrow();
+  });
+  it('enforces published immutability in PostgreSQL, including direct update/delete', async () => {
+    await expect(connection.pool.query('UPDATE lesson_versions SET version = 55 WHERE id = $1', [DEMO.version])).rejects.toThrow('immutable');
+    await expect(connection.pool.query('DELETE FROM lesson_versions WHERE id = $1', [DEMO.version])).rejects.toThrow('immutable');
+    await seedCatalog(connection.db);
+    expect((await app.inject(`/api/v1/lesson-versions/${DEMO.version}`)).json()).toEqual(demoVersion);
+  });
+  it('keeps an existing session pinned after publishing a newer definition', async () => {
+    const session = await lessonSession(); const next = { ...demoVersion, id: randomUUID(), version: 2, title: 'Updated original demo' };
+    await publishVersion(connection.db, next);
+    const restored = (await app.inject(`/api/v1/sessions/${session.id}`)).json();
+    expect(restored.lessonVersionId).toBe(DEMO.version);
+    expect((await app.inject({ method: 'POST', url: '/api/v1/sessions', payload: { ...session, lessonVersionId: next.id } })).statusCode).toBe(409);
+    await expect(connection.pool.query('UPDATE teaching_sessions SET lesson_version_id = $1 WHERE id = $2', [next.id, session.id])).rejects.toThrow('immutable');
+    expect((await app.inject(`/api/v1/lesson-versions/${DEMO.version}`)).json().title).toBe(demoVersion.title);
+  });
+  it('rejects inconsistent lesson context and unknown pins', async () => {
+    const session = lessonIdentity();
+    expect((await app.inject({ method: 'POST', url: '/api/v1/sessions', payload: { ...session, context: { ...session.context, classId: 'other' } } })).statusCode).toBe(400);
+    expect((await app.inject({ method: 'POST', url: '/api/v1/sessions', payload: { ...session, lessonVersionId: randomUUID() } })).statusCode).toBe(404);
+  });
+  it('persists bounded progress with exact idempotent retries and optimistic concurrency', async () => {
+    const session = await lessonSession(); const body = progressBody();
+    const reveal = demoVersion.activities[2]!;
+    body.progress.currentActivityId = reveal.id; body.progress.states[reveal.id] = { kind: 'reveal', revealed: 2 }; body.progress.localRevision = 2;
+    const first = await progressPut(session.id, body); expect(first.statusCode).toBe(200);
+    expect((await progressPut(session.id, body)).json()).toEqual(first.json());
+    expect((await progressPut(session.id, { ...body, mutationId: randomUUID() })).statusCode).toBe(409);
+    expect((await progressPut(session.id, { ...body, progress: { ...body.progress, localRevision: 3 } })).statusCode).toBe(409);
+    const restored = (await app.inject(`/api/v1/sessions/${session.id}`)).json(); expect(restored.progress).toEqual(body.progress); expect(restored.progressServerRevision).toBe(1);
+  });
+  it('rejects foreign activity state and bounds violations; never exposes another school session', async () => {
+    const session = await lessonSession(); const body = progressBody();
+    expect((await progressPut(session.id, body, other)).statusCode).toBe(404);
+    expect((await other.inject(`/api/v1/sessions/${session.id}`)).statusCode).toBe(404);
+    expect((await progressPut(session.id, { ...body, progress: { ...body.progress, currentActivityId: randomUUID() } })).statusCode).toBe(400);
+    const reveal = demoVersion.activities[2]!;
+    expect((await progressPut(session.id, { ...body, progress: { ...body.progress, states: { ...body.progress.states, [reveal.id]: { kind: 'reveal', revealed: 5 } } } })).statusCode).toBe(400);
+    expect((await progressPut(session.id, { ...body, progress: { ...body.progress, lessonVersionId: randomUUID() } })).statusCode).toBe(400);
+  });
+  it('validates version/activity/scene annotation ownership on save', async () => {
+    const session = await lessonSession(); const activity = demoVersion.activities[0]!;
+    const body = saveBody(session.id);
+    body.document.owner = { sessionId: session.id, classId: DEMO.class, subjectId: DEMO.subject, target: { kind: 'annotation', lessonVersionId: DEMO.version, activityId: activity.id, sceneId: activity.sceneId } };
+    expect((await put(body)).statusCode).toBe(200);
+    const wrong = { ...body, mutationId: randomUUID(), document: { ...body.document, id: randomUUID(), owner: { ...body.document.owner, target: { kind: 'annotation' as const, lessonVersionId: DEMO.version, activityId: randomUUID(), sceneId: activity.sceneId } } } };
+    expect((await put(wrong)).statusCode).toBe(400);
   });
 });

@@ -1,12 +1,20 @@
 import { z } from 'zod';
 import { saveRequestSchema } from '../../contracts';
 import { snapshotSchema, type SessionSnapshot } from './serialization';
+import { progressSaveSchema } from '../../contracts/lesson';
 
 export const localRecordSchema = z.strictObject({
   snapshot: snapshotSchema, generation: z.number().int().nonnegative(), savedAt: z.string(),
   sync: z.record(z.string(), z.strictObject({ serverRevision: z.number().int().nonnegative(),
     acknowledgedLocalRevision: z.number().int().min(-1), pending: saveRequestSchema.optional() })),
+  progressSync: z.strictObject({ serverRevision: z.number().int().nonnegative(), acknowledgedLocalRevision: z.number().int().min(-1),
+    pending: progressSaveSchema.optional() }).optional(),
 }).superRefine((record, ctx) => {
+  const progress = record.snapshot.lesson?.progress;
+  const sync = record.progressSync;
+  if (sync && (!progress || sync.acknowledgedLocalRevision > progress.localRevision || (sync.pending && (
+    sync.pending.progress.lessonVersionId !== progress.lessonVersionId || sync.pending.progress.localRevision > progress.localRevision || sync.pending.baseServerRevision !== sync.serverRevision))))
+    ctx.addIssue({ code: 'custom', message: 'Invalid progress retry metadata' });
   const documents = [record.snapshot.whiteboard, ...Object.values(record.snapshot.annotations)];
   for (const [id, entry] of Object.entries(record.sync)) {
     const document = documents.find(d => d.id === id);

@@ -2,8 +2,12 @@ import { createContext } from "react";
 import type { DrawingDocument } from "../drawing/document";
 import type { DrawingTool, Stroke } from "../types/drawing";
 import type { TeachingMode } from "../drawing/session";
+import type { LessonSession, ActivityState } from '../../contracts/lesson';
 
 export interface DrawingContextType {
+  lesson?: LessonSession;
+  selectActivity: (id: string) => void;
+  updateActivity: (id: string, state: ActivityState) => void;
   saveStatus: string;
   storageChecked: boolean;
   activatePersistence: () => void;

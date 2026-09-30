@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { progressSchema } from './lesson.js';
 
 export const MAX_SNAPSHOT_BYTES = 2 * 1024 * 1024;
 export const uuid = z.uuid();
@@ -9,7 +10,8 @@ export const contextSchema = z.strictObject({
 });
 export const targetSchema = z.discriminatedUnion('kind', [
   z.strictObject({ kind: z.literal('whiteboard') }),
-  z.strictObject({ kind: z.literal('annotation'), sceneId: reference }),
+  z.strictObject({ kind: z.literal('annotation'), sceneId: reference, lessonVersionId: uuid.optional(), activityId: uuid.optional() })
+    .refine(t => Boolean(t.lessonVersionId) === Boolean(t.activityId), 'Complete lesson anchor required'),
 ]);
 export const inkSchema = z.strictObject({
   id: uuid, kind: z.literal('ink'), tool: z.enum(['pen', 'eraser']),
@@ -31,7 +33,7 @@ export const documentSchema = z.strictObject({
   if (new TextEncoder().encode(JSON.stringify(doc)).byteLength > MAX_SNAPSHOT_BYTES)
     ctx.addIssue({ code: 'custom', message: 'Snapshot exceeds 2 MiB limit' });
 });
-export const sessionSchema = z.strictObject({ id: uuid, context: contextSchema });
+export const sessionSchema = z.strictObject({ id: uuid, context: contextSchema, lessonVersionId: uuid.optional() });
 export const saveRequestSchema = z.strictObject({
   mutationId: uuid, baseServerRevision: z.number().int().nonnegative().max(2147483646), document: documentSchema,
 });
@@ -40,7 +42,8 @@ export const acknowledgementSchema = z.strictObject({
   contentHash: z.string().regex(/^[a-f0-9]{64}$/), durable: z.literal(true),
 });
 export const remoteDocumentSchema = z.strictObject({ document: documentSchema, serverRevision: z.number().int().positive() });
-export const sessionResponseSchema = sessionSchema.extend({ documents: z.array(remoteDocumentSchema).max(100) });
+export const sessionResponseSchema = sessionSchema.extend({ documents: z.array(remoteDocumentSchema).max(100),
+  progress: progressSchema.optional(), progressServerRevision: z.number().int().nonnegative().optional() });
 export type SerializedDocument = z.infer<typeof documentSchema>;
 export type SessionIdentity = z.infer<typeof sessionSchema>;
 export type SaveRequest = z.infer<typeof saveRequestSchema>;
