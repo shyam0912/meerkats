@@ -14,5 +14,5 @@ export async function seedIdentity(db: Database, config: Config) {
 if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
   const config = parseEnv(process.env); const { db, pool } = connect(config.DATABASE_URL);
   try { await seedIdentity(db, config); await seedCatalog(db); } finally { await pool.end(); }
-  console.log('Development membership and neutral catalog seeded');
+  console.log('Development membership, neutral demo and chemistry reference catalog seeded');
 }

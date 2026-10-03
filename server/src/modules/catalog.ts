@@ -1,11 +1,11 @@
 import { eq } from 'drizzle-orm';
 import { catalogSchema, lessonVersionSchema } from '../../../contracts/lesson.js';
-import { demoCatalog, demoVersion } from '../../../contracts/demo.js';
+import { bundledCatalog, bundledVersions } from '../../../contracts/catalog-content.js';
 import type { Database } from '../db/connection.js';
 import { catalogNodes, lessons, lessonVersions } from '../db/schema.js';
 import { ApiError } from './sessions.js';
 
-// Original demo catalog is shared read-only by active school members. No school-private content yet.
+// Reference and demo catalog are shared read-only by active school members. No school-private content yet.
 export function catalogService(db: Database) {
   return {
     async catalog() {
@@ -22,11 +22,11 @@ export function catalogService(db: Database) {
 }
 export async function seedCatalog(db: Database) {
   // Validate fixtures before any insertion. Re-seeding cannot edit a published version.
-  const catalog = catalogSchema.parse(demoCatalog); const version = lessonVersionSchema.parse(demoVersion);
+  const catalog = catalogSchema.parse(bundledCatalog); const versions = bundledVersions.map(v => lessonVersionSchema.parse(v));
   await db.transaction(async tx => {
     for (const node of catalog.nodes) await tx.insert(catalogNodes).values(node).onConflictDoNothing();
     for (const definition of catalog.lessons) await tx.insert(lessons).values({ id: definition.id, topicId: definition.topicId, definition }).onConflictDoNothing();
-    await tx.insert(lessonVersions).values({ id: version.id, lessonId: version.lessonId, version: version.version, definition: version }).onConflictDoNothing();
+    for (const version of versions) await tx.insert(lessonVersions).values({ id: version.id, lessonId: version.lessonId, version: version.version, definition: version }).onConflictDoNothing();
   });
 }
 

@@ -6,11 +6,12 @@ async function read(path: string) {
   return response.json() as Promise<unknown>;
 }
 export async function loadCatalog() {
-  return import.meta.env.VITE_API_ENABLED === 'true' ? catalogSchema.parse(await read('catalog')) : (await import('../../contracts/demo')).demoCatalog;
+  return import.meta.env.VITE_API_ENABLED === 'true' ? catalogSchema.parse(await read('catalog')) : (await import('../../contracts/catalog-content')).bundledCatalog;
 }
 export async function loadLessonVersion(id: string) {
   if (import.meta.env.VITE_API_ENABLED === 'true') return lessonVersionSchema.parse(await read(`lesson-versions/${id}`));
-  const { demoVersion } = await import('../../contracts/demo');
-  if (id !== demoVersion.id) throw new Error('Lesson version unavailable');
-  return lessonVersionSchema.parse(demoVersion);
+  const { bundledVersions } = await import('../../contracts/catalog-content');
+  const version = bundledVersions.find(v => v.id === id);
+  if (!version) throw new Error('Lesson version unavailable');
+  return lessonVersionSchema.parse(version);
 }

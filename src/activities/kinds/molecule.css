@@ -1,0 +1,30 @@
+.chemistry-scene { width:1200px; height:675px; padding:24px 44px 14px; box-sizing:border-box; color:#173c47; background:linear-gradient(135deg,#fbfdf9,#eef6f3); font-family:inherit; }
+.chemistry-scene header { height:88px; }
+.chemistry-eyebrow { margin:0 0 7px; font-size:16px; font-weight:750; letter-spacing:.16em; color:#417269; }
+.chemistry-scene h2 { margin:0; font-size:38px; line-height:1.15; font-weight:750; letter-spacing:-.03em; }
+.molecule-stage { height:318px; display:flex; align-items:center; justify-content:center; }
+.molecule-diagram { width:100%; height:100%; overflow:visible; }
+.chemical-bond { stroke:#9aaeb2; stroke-width:9; stroke-linecap:round; }
+.chemical-bond.highlighted { stroke:#0b7769; stroke-width:17; }
+.carbon circle { fill:#fff; stroke:#56767f; stroke-width:3; }
+.carbon.selected circle { fill:#dcf5bd; stroke:#206850; stroke-width:7; stroke-dasharray:9 4; }
+.carbon text { font-size:37px; font-weight:700; fill:#173c47; }
+.carbon rect { fill:#173c47; }
+.carbon text.carbon-number { font-size:31px; fill:#fff; }
+.chemistry-controls { display:grid; grid-template-columns:repeat(var(--control-count), minmax(0,1fr)); gap:16px; }
+.chemistry-controls button { height:128px; border:2px solid #b4cbc5; border-radius:20px; background:#fff; color:#173c47; font-size:27px; font-weight:700; cursor:pointer; padding:12px; }
+.chemistry-controls button small { display:block; font-size:20px; font-weight:500; margin-top:8px; }
+.chemistry-controls button[aria-pressed=true] { background:#173c47; border-color:#173c47; color:#fff; box-shadow:inset 0 -6px #a4dfa3; }
+.chemistry-controls button:hover:not(:disabled) { border-color:#087e6b; }
+.chemistry-controls button:focus-visible { outline:5px solid #dc791c; outline-offset:4px; }
+.chemistry-controls button:disabled { opacity:.5; cursor:default; }
+.chemistry-caption { text-align:center; margin:17px 0 0; font-size:27px; line-height:1.15; font-weight:650; min-height:33px; }
+.chemistry-caption.complete-name { letter-spacing:.025em; color:#0b7059; }
+.chemistry-note { font-size:16px; text-align:center; color:#516b70; margin:11px 0 0; }
+.comparison { gap:22px; }
+.isomer-card { flex:1; min-width:0; height:300px; border:2px solid #cfddd6; border-radius:22px; background:#ffffffa6; text-align:center; }
+.isomer-card p { display:flex; justify-content:space-between; margin:18px 20px 0; font-size:23px; }
+.isomer-card .molecule-diagram { height:210px; }
+.isomer-card span { font-size:23px; }
+.isomer-card .carbon circle { r:58px; }
+.isomer-card .carbon text { font-size:52px; }

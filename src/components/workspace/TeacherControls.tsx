@@ -20,7 +20,7 @@ export default function TeacherControls() {
     {mode === "explore"
       ? lesson && activity ? <div className="activity-actions">
         <p className="explore-guidance">{activity.guidance}</p>
-        {supported.canReveal && runtime?.kind === 'reveal' && <button className="workspace-button" disabled={runtime.revealed >= activity.config.items.length}
+        {supported.canReveal && activity.kind === 'reveal' && runtime?.kind === 'reveal' && <button className="workspace-button" disabled={runtime.revealed >= activity.config.items.length}
           onClick={() => updateActivity(activity.id, { kind: 'reveal', revealed: runtime.revealed + 1 })}>Reveal next</button>}
         {supported.canReset && <button className="workspace-button" disabled={JSON.stringify(runtime) === JSON.stringify(initialState(activity))}
           onClick={() => updateActivity(activity.id, initialState(activity))}>Reset activity</button>}

@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { initialMoleculeState, moleculeConfigSchema, moleculeStateSchema, validMoleculeState } from './molecule.js';
 
 const id = z.uuid();
 const title = z.string().min(1).max(120);
@@ -6,7 +7,7 @@ export const catalogNodeSchema = z.strictObject({ id, parentId: id.nullable(),
   kind: z.enum(['curriculum', 'class', 'subject', 'chapter', 'topic']), title,
   order: z.number().int().min(0).max(1000) });
 export const lessonDefinitionSchema = z.strictObject({ id, curriculumId: id, classLevelId: id,
-  subjectId: id, chapterId: id, topicId: id, title, order: z.number().int().nonnegative(), publishedVersionId: id });
+  subjectId: id, chapterId: id, topicId: id, title, description: z.string().max(250).optional(), order: z.number().int().nonnegative(), publishedVersionId: id });
 export const catalogSchema = z.strictObject({ nodes: z.array(catalogNodeSchema).max(100), lessons: z.array(lessonDefinitionSchema).max(100) })
   .superRefine((catalog, ctx) => {
     const ranks = ['curriculum', 'class', 'subject', 'chapter', 'topic'];
@@ -28,6 +29,7 @@ const common = { id, title, sceneId: id, annotationPolicy: z.enum(['ink', 'none'
 export const visualItemSchema = z.strictObject({ id, label: title, shape: z.enum(['circle', 'triangle', 'square']),
   description: z.string().max(200), color: z.string().regex(/^#[a-fA-F0-9]{6}$/) });
 export const activitySchema = z.discriminatedUnion('kind', [
+  z.strictObject({ ...common, kind: z.literal('molecule-builder'), config: moleculeConfigSchema }),
   z.strictObject({ ...common, kind: z.literal('explain'), config: z.strictObject({ items: z.array(visualItemSchema).min(1).max(3) }) }),
   z.strictObject({ ...common, kind: z.literal('explore'), config: z.strictObject({ items: z.array(visualItemSchema).min(1).max(3) }),
     initialState: z.strictObject({ selectedId: id.nullable() }) }),
@@ -37,14 +39,15 @@ export const activitySchema = z.discriminatedUnion('kind', [
 export const lessonVersionSchema = z.strictObject({ id, lessonId: id, schemaVersion: z.literal(1),
   version: z.number().int().positive(), title, status: z.literal('published'),
   objectives: z.array(z.string().min(1).max(250)).min(1).max(8),
-  provenance: z.strictObject({ sourceType: z.enum(['original-demo', 'licensed', 'original']), sourceTitle: title,
+  provenance: z.strictObject({ sourceType: z.enum(['original-demo', 'licensed', 'original', 'textbook-reference']), sourceTitle: title,
     edition: z.string().max(60).nullable(), pages: z.array(z.string().max(30)).max(30),
-    reviewStatus: z.enum(['engineering-demo', 'reviewed']), note: z.string().max(500) }),
+    reviewStatus: z.enum(['engineering-demo', 'reviewed', 'teacher-review-pending']), note: z.string().max(500) }),
   assetIds: z.array(id).max(30), activities: z.array(activitySchema).min(1).max(12),
 }).superRefine((version, ctx) => {
   if (new Set(version.activities.map(a => a.id)).size !== version.activities.length)
     ctx.addIssue({ code: 'custom', message: 'Duplicate activity identity' });
   for (const activity of version.activities) {
+    if (activity.kind === 'molecule-builder') continue;
     if (new Set(activity.config.items.map(i => i.id)).size !== activity.config.items.length)
       ctx.addIssue({ code: 'custom', message: 'Duplicate item identity' });
     if (activity.kind === 'explore' && activity.initialState.selectedId !== null && !activity.config.items.some(i => i.id === activity.initialState.selectedId))
@@ -54,6 +57,7 @@ export const lessonVersionSchema = z.strictObject({ id, lessonId: id, schemaVers
   }
 });
 export const activityStateSchema = z.discriminatedUnion('kind', [
+  moleculeStateSchema,
   z.strictObject({ kind: z.literal('explain') }),
   z.strictObject({ kind: z.literal('explore'), selectedId: id.nullable() }),
   z.strictObject({ kind: z.literal('reveal'), revealed: z.number().int().min(0).max(6) }),
@@ -75,6 +79,7 @@ export type LessonProgress = z.infer<typeof progressSchema>;
 export type LessonSession = z.infer<typeof lessonSessionSchema>;
 export type ProgressSave = z.infer<typeof progressSaveSchema>;
 export function initialState(activity: ActivityDefinition): ActivityState {
+  if (activity.kind === 'molecule-builder') return initialMoleculeState(activity.config);
   return activity.kind === 'explain' ? { kind: 'explain' } : { kind: activity.kind, ...activity.initialState } as ActivityState;
 }
 export function initialProgress(version: LessonVersion): LessonProgress {
@@ -85,6 +90,7 @@ export function validProgress(version: LessonVersion, progress: LessonProgress):
   return version.id === progress.lessonVersionId && version.activities.some(a => a.id === progress.currentActivityId) &&
     Object.keys(progress.states).length === version.activities.length && version.activities.every(a => {
       const state = progress.states[a.id];
+      if (a.kind === 'molecule-builder') return state?.kind === 'molecule-builder' && validMoleculeState(a.config, state);
       return state?.kind === a.kind && (state.kind !== 'explore' || state.selectedId === null || a.config.items.some(i => i.id === state.selectedId)) &&
         (state.kind !== 'reveal' || state.revealed <= a.config.items.length);
     });

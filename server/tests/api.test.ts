@@ -15,6 +15,7 @@ import { memberships } from '../src/db/schema.js';
 import { eq } from 'drizzle-orm';
 import { seedCatalog, publishVersion } from '../src/modules/catalog.js';
 import { DEMO, demoVersion } from '../../contracts/demo.js';
+import { CHEMISTRY, chemistryVersion } from '../../contracts/chemistry.js';
 import { catalogSchema, initialProgress, lessonVersionSchema, type ProgressSave } from '../../contracts/lesson.js';
 
 let postgres: EmbeddedPostgres;
@@ -144,6 +145,37 @@ describe('real PostgreSQL API', () => {
     const second = (await other.inject(`/api/v1/sessions/${secondSession.id}`)).json();
     for (const session of [first, second])
       for (const document of session.documents) expect(document.document.owner.sessionId).toBe(session.id);
+  });
+});
+
+describe('Phase 5 chemistry publication and progress', () => {
+  it('seeds the exact source-mapped version idempotently without changing the neutral demo', async () => {
+    await seedCatalog(connection.db);
+    const catalog = catalogSchema.parse((await app.inject('/api/v1/catalog')).json());
+    expect(catalog.lessons.find(l => l.id === CHEMISTRY.lesson)?.publishedVersionId).toBe(CHEMISTRY.version);
+    expect((await app.inject(`/api/v1/lesson-versions/${CHEMISTRY.version}`)).json()).toEqual(chemistryVersion);
+    expect((await app.inject(`/api/v1/lesson-versions/${DEMO.version}`)).json()).toEqual(demoVersion);
+    await expect(connection.pool.query('UPDATE lesson_versions SET version = 55 WHERE id = $1', [CHEMISTRY.version])).rejects.toThrow('immutable');
+  });
+  it('persists chemistry runtime through the existing protocol and rejects invalid or foreign state', async () => {
+    const session = { id: randomUUID(), lessonVersionId: CHEMISTRY.version,
+      context: { classId: CHEMISTRY.class, subjectId: CHEMISTRY.subject, classLabel: 'Standard X', subjectLabel: 'Chemistry' } };
+    expect((await app.inject({ method: 'POST', url: '/api/v1/sessions', payload: session })).statusCode).toBe(200);
+    const body: ProgressSave = { mutationId: randomUUID(), baseServerRevision: 0, progress: initialProgress(chemistryVersion) };
+    const activity = chemistryVersion.activities[4]!;
+    body.progress.currentActivityId = activity.id;
+    body.progress.states[activity.id] = { kind: 'molecule-builder', structureId: 'methylbutane', visibleCount: 5, candidateId: null,
+      direction: null, revealed: false, nameParts: ['branch'], focusPart: 'branch' };
+    const url = `/api/v1/sessions/${session.id}/progress`;
+    const response = await app.inject({ method: 'PUT', url, payload: body }); expect(response.statusCode).toBe(200);
+    expect((await app.inject({ method: 'PUT', url, payload: body })).json()).toEqual(response.json());
+    expect((await app.inject(`/api/v1/sessions/${session.id}`)).json().progress).toEqual(body.progress);
+    expect((await other.inject({ method: 'PUT', url, payload: body })).statusCode).toBe(404);
+    const malformed = { ...body, mutationId: randomUUID(), baseServerRevision: 1, progress: { ...body.progress,
+      states: { ...body.progress.states, [activity.id]: { ...body.progress.states[activity.id], structureId: 'invented' } } } };
+    expect((await app.inject({ method: 'PUT', url, payload: malformed })).statusCode).toBe(400);
+    await expect(publishVersion(connection.db, { ...chemistryVersion, id: randomUUID(), version: 2,
+      activities: [{ ...activity, config: { stage: 'name', structures: [] } }] })).rejects.toThrow();
   });
 });
 

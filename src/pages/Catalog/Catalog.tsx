@@ -31,16 +31,17 @@ export default function Catalog() {
   }
   return <main className="catalog-page">
     <button className="workspace-button" onClick={() => navigate(parent ? parent.kind === 'class' ? '/catalog' : `/catalog?parent=${parent.parentId}` : '/')}>← Back</button>
-    <p className="catalog-kicker">MEERKATS · ORIGINAL DEMONSTRATION CATALOG</p><h1>{title}</h1>
-    <p>{parent?.title ?? 'Choose a demonstration lesson or open a class workspace.'}</p>
-    <p className="catalog-source">{import.meta.env.VITE_API_ENABLED === 'true' ? 'Catalog from the school API' : 'Bundled demo catalog · API disabled'}</p>
+    <p className="catalog-kicker">MEERKATS · TEACHING CATALOG</p><h1>{title}</h1>
+    <p>{parent?.title ?? 'Choose a curriculum reference lesson, a neutral demo, or a class workspace.'}</p>
+    <p className="catalog-source">{import.meta.env.VITE_API_ENABLED === 'true' ? 'Catalog from the school API' : 'Bundled catalog · API disabled'}</p>
     {error && <div role="alert"><p>{error}</p><button className="workspace-button" onClick={() => setAttempt(a => a + 1)}>Retry catalog</button></div>}
     {!data && !error && <p role="status">Loading catalog…</p>}
     <div className="catalog-grid">{!lessons.length && nodes.map(node => <button className="catalog-card" key={node.id}
-      onClick={() => navigate(`/catalog?parent=${node.id}`)}>{node.title}<span>{node.kind === 'class' ? 'Neutral lessons · No curriculum assigned' : 'Browse'}</span></button>)}
+      onClick={() => navigate(`/catalog?parent=${node.id}`)}>{node.title}<span>{node.kind === 'class' ? data?.nodes.find(n => n.id === node.parentId)?.title : 'Browse'}</span></button>)}
       {lessons.map(lesson => <article className="catalog-card lesson-card" key={lesson.id}>
         <p>{data?.nodes.find(n => n.id === lesson.topicId)?.title}</p><h2>{lesson.title}</h2>
-        <p>Original visual, explore and reveal activities. No textbook content.</p>
+        <p>{data?.nodes.find(n => n.id === lesson.curriculumId)?.title}</p>
+        <p>{lesson.description ?? 'Neutral engineering demo · No textbook content'}</p>
         <button className="workspace-button" disabled={loading} onClick={() => { void start(lesson); }}>{loading ? 'Loading lesson…' : 'Start Teaching'}</button>
       </article>)}
     </div>
