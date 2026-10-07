@@ -1,0 +1,58 @@
+/* V2 opt-in tokens. Existing teaching surfaces retain their geometry and styles. */
+.mk-v2 {
+  --mk-font: "Segoe UI", ui-sans-serif, system-ui, sans-serif;
+  --mk-text: #203e39;
+  --mk-muted: #52675e;
+  --mk-canvas: #f3f4ed;
+  --mk-surface: #ffffff;
+  --mk-surface-soft: #e8ede3;
+  --mk-accent: #214f45;
+  --mk-accent-hover: #285c50;
+  --mk-on-accent: #f8faed;
+  --mk-border: #ced7c9;
+  --mk-focus: #97501b;
+  --mk-space-1: 8px;
+  --mk-space-2: 16px;
+  --mk-space-3: 24px;
+  --mk-space-4: 32px;
+  --mk-space-5: 48px;
+  --mk-radius: 24px;
+  --mk-radius-small: 12px;
+  --mk-shadow: 0 5px 16px #203e3908;
+  --mk-touch: 60px;
+  --mk-content-width: 1480px;
+  --mk-title: clamp(36px, 3.1vw, 58px);
+  --mk-label: clamp(28px, 2.2vw, 40px);
+  --mk-body: clamp(18px, 1.3vw, 24px);
+  --mk-motion: 160ms;
+  --mk-ease: cubic-bezier(.2, .7, .3, 1);
+  color: var(--mk-text);
+  font-family: var(--mk-font);
+  line-height: 1.4;
+}
+.mk-v2 .mk-destination {
+  position: relative;
+  min-width: 0;
+  min-height: var(--mk-touch);
+  border: 1px solid var(--mk-border);
+  border-radius: var(--mk-radius);
+  background: var(--mk-surface);
+  color: inherit;
+  text-align: left;
+  box-shadow: var(--mk-shadow);
+  cursor: pointer;
+  isolation: isolate;
+  transition: background-color var(--mk-motion) var(--mk-ease), border-color var(--mk-motion) var(--mk-ease), transform var(--mk-motion) var(--mk-ease);
+}
+.mk-v2 .mk-destination:focus-visible { outline: 4px solid var(--mk-focus); outline-offset: 5px; }
+.mk-v2 .mk-destination:active:not([aria-disabled="true"]) { transform: translateY(2px); }
+.mk-v2 .mk-destination[aria-disabled="true"] { cursor: default; }
+.mk-v2 .destination-title { display: block; font-size: var(--mk-label); font-weight: 650; letter-spacing: -.025em; line-height: 1.15; }
+.mk-v2 .destination-description { display: block; margin-top: var(--mk-space-1); font-size: var(--mk-body); }
+.mk-v2 .destination-arrow { display: grid; place-items: center; width: var(--mk-touch); height: var(--mk-touch); border: 1px solid currentColor; border-radius: 50%; }
+.mk-v2 .destination-arrow svg { width: 26px; height: 26px; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
+@media (prefers-reduced-motion: reduce) {
+  .mk-v2 { --mk-motion: 0ms; }
+  .mk-v2 .mk-destination { transition: none; }
+  .mk-v2 .mk-destination:active:not([aria-disabled="true"]) { transform: none; }
+}

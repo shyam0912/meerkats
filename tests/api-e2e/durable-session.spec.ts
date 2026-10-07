@@ -7,7 +7,7 @@ async function dot(page: Page, content = false) {
 }
 test('real API acknowledgement, retrieval and rendering in an empty browser storage context', async ({ page, browser }) => {
   const errors: string[] = []; page.on('pageerror', error => errors.push(error.message));
-  await page.goto('/'); await page.getByRole('button', { name: 'Quick Workspace' }).click(); await dot(page);
+  await page.goto('/'); await page.getByRole('button', { name: 'Whiteboard' }).click(); await dot(page);
   await page.getByRole('button', { name: 'Annotate', exact: true }).click(); await dot(page, true);
   await expect(page.getByRole('status')).toHaveText('Ink synced · Context saved on device', { timeout: 20000 });
   const url = page.url(); const id = new URL(url).searchParams.get('session');
@@ -27,7 +27,7 @@ test('real API acknowledgement, retrieval and rendering in an empty browser stor
 });
 test('API outage preserves local drawing and reload; reconnect acknowledges queued ink', async ({ page }) => {
   await page.route('**/api/v1/**', route => route.abort('connectionrefused'));
-  await page.goto('/'); await page.getByRole('button', { name: 'Quick Workspace' }).click(); await dot(page);
+  await page.goto('/'); await page.getByRole('button', { name: 'Whiteboard' }).click(); await dot(page);
   await expect(page.getByRole('status')).toHaveText('Saved on this device · Server unavailable');
   await page.reload(); await expect(surface(page)).toHaveAttribute('data-ink-count', '1');
   await expect(page.getByRole('status')).toHaveText('Saved on this device · Server unavailable');

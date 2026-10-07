@@ -1,6 +1,6 @@
 import { expect, type Page } from '@playwright/test';
 export async function launchChemistry(page: Page) {
-  await page.goto('/'); await page.getByRole('button', { name: 'Start Teaching' }).click();
+  await page.goto('/'); await page.getByRole('button', { name: 'Classroom' }).click();
   await page.getByRole('button', { name: /Standard X/ }).click();
   await page.getByRole('button', { name: /Chemistry · English Medium/ }).click();
   await page.getByRole('button', { name: /Unit 1 · Nomenclature/ }).click();

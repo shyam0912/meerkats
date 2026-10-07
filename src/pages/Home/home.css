@@ -1,0 +1,60 @@
+.home-page { min-height: 100dvh; display: flex; align-items: center; padding: clamp(20px, 3.5vh, 44px) clamp(24px, 5vw, 96px); background: var(--mk-canvas); }
+.home-shell { width: 100%; max-width: var(--mk-content-width); margin-inline: auto; }
+.home-brand { display: flex; align-items: center; gap: 12px; font-size: 28px; font-weight: 700; letter-spacing: -.055em; }
+.home-brand svg { width: 36px; height: 36px; stroke: var(--mk-accent); stroke-width: 3; stroke-linecap: round; }
+.home-brand circle { fill: var(--mk-accent); stroke: none; }
+.home-heading { margin: clamp(24px, 4.5vh, 48px) 0 clamp(24px, 3.5vh, 40px); font-size: var(--mk-title); font-weight: 600; line-height: 1.12; letter-spacing: -.045em; }
+.home-destinations { display: grid; grid-template-columns: 1.08fr 1fr; gap: var(--mk-space-3); }
+.home-classroom, .home-whiteboard { height: clamp(236px, 34vh, 370px); padding: var(--mk-space-4); display: flex; align-items: flex-end; gap: var(--mk-space-2); }
+.home-destinations .home-classroom { background: var(--mk-accent); color: var(--mk-on-accent); border-color: var(--mk-accent); }
+.home-destinations .home-classroom:hover { background: var(--mk-accent-hover); }
+.home-destinations .home-whiteboard:hover { background: #fafcf7; border-color: #7e9b8b; }
+.destination-copy { position: relative; z-index: 1; flex: 1; }
+.home-classroom .destination-description { color: #dbe7d5; }
+.home-whiteboard .destination-description { color: var(--mk-muted); }
+.home-classroom .destination-arrow { color: #dbe7d5; }
+.home-whiteboard .destination-arrow { color: var(--mk-accent); }
+.home-art { position: absolute; top: 6px; right: 20px; width: 65%; height: calc(100% - 104px); pointer-events: none; }
+.classroom-art .art-guide { stroke: #6b9782; stroke-width: 2; }
+.classroom-art .art-orbit { fill: #dce8ad; }
+.classroom-art .art-point { fill: var(--mk-accent); }
+.classroom-art .art-square { fill: #88b7a4; }
+.classroom-art .art-triangle { stroke: #dce8ad; stroke-width: 3; stroke-linejoin: round; }
+.classroom-art .art-mark { stroke: #a7cab2; stroke-width: 2; stroke-linecap: round; }
+.whiteboard-art .board-guide { stroke: #e1e7dc; stroke-width: 1; }
+.home-art.whiteboard-art { width: 80%; height: calc(100% - 92px); right: 16px; top: 3px; }
+.whiteboard-art .board-sketch { stroke: #9cb4a3; stroke-width: 2; stroke-linecap: round; }
+.whiteboard-art .board-anchor { fill: #dce8ad; stroke: var(--mk-accent); stroke-width: 2; }
+.whiteboard-art .board-ink { stroke: var(--mk-accent); stroke-width: 6; stroke-linecap: round; }
+.whiteboard-art .board-underline { stroke: #c1a575; stroke-width: 4; stroke-linecap: round; }
+.whiteboard-art .board-tip { fill: #c9d7c8; stroke: var(--mk-accent); stroke-width: 2; }
+.whiteboard-art .board-pen { fill: var(--mk-accent); }
+.home-destinations .home-labs { grid-column: 1 / -1; min-height: 176px; padding: var(--mk-space-3) var(--mk-space-4); background: var(--mk-surface-soft); display: grid; align-items: center; }
+.labs-heading { display: flex; align-items: center; gap: var(--mk-space-2); }
+.availability-label { margin-left: auto; font-size: 17px; font-weight: 500; color: var(--mk-muted); }
+.home-labs .destination-description { color: var(--mk-muted); }
+.labs-subjects { display: flex; align-items: center; justify-content: space-between; gap: var(--mk-space-3); margin-top: 20px; padding-top: 16px; border-top: 1px solid var(--mk-border); font-size: 19px; color: var(--mk-text); }
+.lab-subject { display: inline-flex; align-items: center; gap: 12px; white-space: nowrap; }
+.lab-subject svg { width: 30px; height: 30px; flex: none; stroke: var(--mk-accent); stroke-width: 1.6; stroke-linecap: round; stroke-linejoin: round; }
+@media (max-height: 760px) and (min-width: 951px) {
+  .home-page { padding-block: 20px; }
+  .home-heading { margin-block: 20px 24px; --mk-title: 42px; }
+  .home-destinations { gap: 16px; }
+  .home-classroom, .home-whiteboard { height: 220px; padding: 24px; }
+  .home-destinations .home-labs { min-height: 156px; padding: 18px 24px; }
+  .labs-subjects { margin-top: 14px; padding-top: 12px; }
+}
+@media (max-width: 1100px) {
+  .home-page { padding-inline: 32px; }
+  .labs-subjects { font-size: 17px; gap: 16px; }
+  .lab-subject { gap: 8px; }
+  .lab-subject svg { width: 26px; height: 26px; }
+  .home-art { width: 62%; }
+}
+/* A simple fallback below panel sizes; no separate phone product layout. */
+@media (max-width: 760px) {
+  .home-page { padding: 24px; }
+  .home-destinations { grid-template-columns: 1fr; }
+  .labs-subjects { flex-wrap: wrap; justify-content: flex-start; }
+  .home-classroom, .home-whiteboard { height: 250px; padding: 24px; }
+}

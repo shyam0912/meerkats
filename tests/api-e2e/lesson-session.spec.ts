@@ -1,7 +1,7 @@
 import { test, expect } from '@playwright/test';
 import { DEMO } from '../../contracts/demo';
 test('backend catalog, pinned lesson, fresh-device recovery and outage-safe local progress', async ({ page, browser }) => {
-  await page.goto('/'); await page.getByRole('button', { name: 'Start Teaching' }).click();
+  await page.goto('/'); await page.getByRole('button', { name: 'Classroom' }).click();
   await expect(page.getByText('Catalog from the school API')).toBeVisible();
   await page.getByRole('button', { name: /Demo class/ }).click();
   await page.getByRole('button', { name: /Visual exploration/ }).click();

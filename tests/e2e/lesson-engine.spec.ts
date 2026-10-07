@@ -1,6 +1,6 @@
 import { test, expect, type Page } from '@playwright/test';
 async function launch(page: Page) {
-  await page.goto('/'); await page.getByRole('button', { name: 'Start Teaching' }).click();
+  await page.goto('/'); await page.getByRole('button', { name: 'Classroom' }).click();
   await page.getByRole('button', { name: /Demo class/ }).click();
   await page.getByRole('button', { name: /Visual exploration/ }).click();
   await page.getByRole('button', { name: /Observe and describe/ }).click();
@@ -91,7 +91,7 @@ test('failed activity module leaves navigation and Whiteboard usable', async ({ 
   await page.getByRole('button', { name: 'Reveal next' }).click();
   await expect(page.getByText('1 of 3 prompts revealed')).toBeVisible();
   await page.getByRole('button', { name: '← Back' }).click();
-  await expect(page.getByRole('button', { name: 'Quick Workspace' })).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Whiteboard' })).toBeVisible();
 });
 for (const viewport of [{ width: 1920, height: 1080 }, { width: 1280, height: 720 }, { width: 1024, height: 600 }]) {
   test(`lesson controls fit and ink stays aligned at ${viewport.width}x${viewport.height}`, async ({ page }) => {

@@ -13,7 +13,7 @@ async function alpha(surface: Locator, x = .5, y = .5) {
 }
 test.beforeEach(async ({ page }) => {
   await page.goto("/");
-  await page.getByRole("button", { name: "Quick Workspace" }).click();
+  await page.getByRole("button", { name: "Whiteboard" }).click();
 });
 
 test("Explore routes input to content; Annotate blocks pointer and keyboard input underneath", async ({ page }) => {
@@ -118,7 +118,7 @@ test("new teaching session resets annotation, whiteboard and fixture state", asy
   await dot(page, annotation(page));
   const oldId = await annotation(page).getAttribute("data-document-id");
   await page.getByRole("button", { name: "Back" }).click();
-  await page.getByRole("button", { name: "Quick Workspace" }).click();
+  await page.getByRole("button", { name: "Whiteboard" }).click();
   await expect(board(page)).toHaveAttribute("data-ink-count", "0");
   await page.getByRole("button", { name: "Content", exact: true }).click();
   await expect(page.getByRole("button", { name: "Triangle", exact: true })).toHaveAttribute("aria-pressed", "false");

@@ -19,7 +19,7 @@ async function pixel(page: Page, x: number, y: number) {
 }
 test.beforeEach(async ({ page }) => {
   await page.goto("/");
-  await page.getByRole("button", { name: "Quick Workspace" }).click();
+  await page.getByRole("button", { name: "Whiteboard" }).click();
   await expect(surface(page)).toBeVisible();
 });
 
@@ -195,11 +195,11 @@ for (const event of ["pointercancel", "lostpointercapture"] as const) {
   });
 }
 
-test("class/subject selections and Quick Workspace own independent sessions", async ({ page }) => {
+test("class/subject selections and Whiteboard own independent sessions", async ({ page }) => {
   await stroke(page);
   const quickId = await surface(page).getAttribute("data-document-id");
   await page.getByRole("button", { name: "Back" }).click();
-  await page.getByRole("button", { name: "Start Teaching" }).click();
+  await page.getByRole("button", { name: "Classroom" }).click();
   await page.getByRole("button", { name: "STD 5", exact: true }).click();
   await page.getByRole("button", { name: "🔬 Science", exact: true }).click();
   await expect(surface(page)).toHaveAttribute("data-ink-count", "0");
@@ -213,14 +213,14 @@ test("class/subject selections and Quick Workspace own independent sessions", as
   await expect(surface(page)).toHaveAttribute("data-ink-count", "1");
   await expect.poll(async () => (await pixel(page, 300, 180))[3]).toBeGreaterThan(0);
   await page.getByRole("button", { name: "Back" }).click();
-  await page.getByRole("button", { name: "Start Teaching" }).click();
+  await page.getByRole("button", { name: "Classroom" }).click();
   await page.getByRole("button", { name: "STD 1", exact: true }).click();
   await page.getByRole("button", { name: "Mathematics" }).click();
   await expect(surface(page)).toHaveAttribute("data-ink-count", "0");
   expect(await surface(page).getAttribute("data-document-id")).not.toBe(scienceId);
   await expect(page.getByRole("button", { name: "Undo", exact: true })).toBeDisabled();
   await page.getByRole("button", { name: "Back" }).click();
-  await page.getByRole("button", { name: "Quick Workspace" }).click();
+  await page.getByRole("button", { name: "Whiteboard" }).click();
   await expect(surface(page)).toHaveAttribute("data-ink-count", "0");
   await expect(page.getByText("Mathematics", { exact: true })).not.toBeVisible();
 });
