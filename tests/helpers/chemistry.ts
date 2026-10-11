@@ -1,11 +1,12 @@
 import { expect, type Page } from '@playwright/test';
 export async function launchChemistry(page: Page) {
   await page.goto('/'); await page.getByRole('button', { name: 'Classroom' }).click();
-  await page.getByRole('button', { name: /Standard X/ }).click();
-  await page.getByRole('button', { name: /Chemistry · English Medium/ }).click();
+  await page.getByRole('button', { name: /Standard 10/ }).click();
+  await page.getByRole('button', { name: /Chemistry/ }).click();
   await page.getByRole('button', { name: /Unit 1 · Nomenclature/ }).click();
+  await page.getByRole('button', { name: 'One branch. Two structures.', exact: true }).click();
   await expect(page.getByText('Academic teacher review pending', { exact: false })).toBeVisible();
-  await page.getByRole('button', { name: 'Start Teaching' }).click();
+  await page.getByRole('button', { name: 'Start teaching' }).click();
   await expect(page.getByRole('button', { name: 'Activity outline' })).toContainText('1 of 7');
 }
 export async function step(page: Page, number: number, title: string) {

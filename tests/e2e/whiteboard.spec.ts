@@ -199,7 +199,7 @@ test("class/subject selections and Whiteboard own independent sessions", async (
   await stroke(page);
   const quickId = await surface(page).getAttribute("data-document-id");
   await page.getByRole("button", { name: "Back" }).click();
-  await page.getByRole("button", { name: "Classroom" }).click();
+  await page.goto("/classes");
   await page.getByRole("button", { name: "STD 5", exact: true }).click();
   await page.getByRole("button", { name: "🔬 Science", exact: true }).click();
   await expect(surface(page)).toHaveAttribute("data-ink-count", "0");
@@ -213,7 +213,7 @@ test("class/subject selections and Whiteboard own independent sessions", async (
   await expect(surface(page)).toHaveAttribute("data-ink-count", "1");
   await expect.poll(async () => (await pixel(page, 300, 180))[3]).toBeGreaterThan(0);
   await page.getByRole("button", { name: "Back" }).click();
-  await page.getByRole("button", { name: "Classroom" }).click();
+  await page.goto("/classes");
   await page.getByRole("button", { name: "STD 1", exact: true }).click();
   await page.getByRole("button", { name: "Mathematics" }).click();
   await expect(surface(page)).toHaveAttribute("data-ink-count", "0");

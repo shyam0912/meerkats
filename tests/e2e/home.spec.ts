@@ -55,7 +55,7 @@ test('keyboard destinations have visible focus; Labs truthfully remains unavaila
   await expect(page).toHaveURL(/\/workspace\?session=/);
   await page.goto('/'); await page.keyboard.press('Tab'); await page.keyboard.press('Enter');
   await expect(page).toHaveURL(/\/catalog$/);
-  await expect(page.getByRole('heading', { name: 'Select Class' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Which class are you teaching?' })).toBeVisible();
 });
 
 test('reduced motion removes transitions and retains destination navigation', async ({ page }) => {
@@ -72,7 +72,7 @@ test('reduced motion removes transitions and retains destination navigation', as
 });
 
 test('existing catalog, class, subject and workspace routes remain directly available', async ({ page }) => {
-  for (const [path, heading] of [['/catalog', 'Select Class'], ['/classes', 'Select Class'], ['/subjects', 'Select Subject']]) {
+  for (const [path, heading] of [['/catalog', 'Which class are you teaching?'], ['/classes', 'Select Class'], ['/subjects', 'Select Subject']]) {
     await page.goto(path!); await expect(page.getByRole('heading', { name: heading!, exact: true })).toBeVisible();
   }
   await page.goto('/workspace');

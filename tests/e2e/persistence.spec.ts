@@ -15,7 +15,7 @@ test('an editable new workspace already has a recoverable empty identity', async
   await expect(surface(page)).toHaveAttribute('data-ink-count', '0'); expect(page.url()).toBe(url);
 });
 test('class and subject context, independent ink and current content selection survive reload', async ({ page }) => {
-  await page.goto('/'); await page.getByRole('button', { name: 'Classroom' }).click();
+  await page.goto('/classes');
   await page.getByRole('button', { name: 'STD 1', exact: true }).click();
   await page.getByRole('button', { name: '🔬 Science', exact: true }).click();
   await dot(page); const boardId = await surface(page).getAttribute('data-document-id');

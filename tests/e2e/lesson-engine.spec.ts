@@ -1,11 +1,12 @@
 import { test, expect, type Page } from '@playwright/test';
 async function launch(page: Page) {
-  await page.goto('/'); await page.getByRole('button', { name: 'Classroom' }).click();
+  await page.goto('/catalog?internal=demo');
   await page.getByRole('button', { name: /Demo class/ }).click();
   await page.getByRole('button', { name: /Visual exploration/ }).click();
   await page.getByRole('button', { name: /Observe and describe/ }).click();
+  await page.getByRole('button', { name: 'Shapes and patterns', exact: true }).click();
   await expect(page.getByText('Shapes and patterns', { exact: true })).toBeVisible();
-  await page.getByRole('button', { name: 'Start Teaching' }).click();
+  await page.getByRole('button', { name: 'Start teaching' }).click();
   await expect(page.getByRole('button', { name: 'Activity outline' })).toContainText('1 of 3');
 }
 const surface = (page: Page, whiteboard = false) => page.getByRole('region', { name: whiteboard ? 'Whiteboard drawing surface' : 'Content annotation surface' });
