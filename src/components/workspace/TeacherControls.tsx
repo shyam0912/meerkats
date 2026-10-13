@@ -8,12 +8,13 @@ export default function TeacherControls() {
   const activity = lesson?.version.activities.find(a => a.id === lesson.progress.currentActivityId);
   const supported = capabilities(activity);
   const runtime = activity && lesson?.progress.states[activity.id];
+  const continuous = activity?.kind === 'thin-lens';
   return <footer className="teacher-controls" aria-label="Teacher controls">
     <div className="mode-controls" role="group" aria-label="Teaching mode">
       <button className="workspace-button" aria-pressed={mode === "whiteboard"} disabled={isInteracting}
         onClick={() => setMode("whiteboard")}>Whiteboard</button>
-      <button className="workspace-button" aria-label="Content" aria-pressed={mode === "explore"} disabled={isInteracting}
-        onClick={() => setMode("explore")}>Content <small>{!lesson || supported.canExplore ? 'Explore' : 'View'}</small></button>
+      <button className="workspace-button" aria-label={continuous ? 'Explore' : 'Content'} aria-pressed={mode === "explore"} disabled={isInteracting}
+        onClick={() => setMode("explore")}>{continuous ? 'Explore' : <>Content <small>{!lesson || supported.canExplore ? 'Explore' : 'View'}</small></>}</button>
       {(!lesson || supported.canAnnotate) && <button className="workspace-button" aria-pressed={mode === "annotate"} disabled={isInteracting}
         onClick={() => setMode("annotate")}>Annotate</button>}
     </div>

@@ -1,13 +1,14 @@
 import { describe, expect, it } from 'vitest';
 import { bundledCatalog } from '../../../contracts/catalog-content';
 import { CHEMISTRY } from '../../../contracts/chemistry';
+import { PHYSICS } from '../../../contracts/physics';
 import { catalogPath, chapterLabel, discovery } from './discovery';
 
 describe('catalog presentation', () => {
   it('uses stable IDs and the exact topic ownership, regardless of labels', () => {
     const data = structuredClone(bundledCatalog);
     data.nodes.forEach(n => { n.title = 'Renamed'; });
-    expect(discovery(data, CHEMISTRY.class).nodes.map(n => n.id)).toEqual([CHEMISTRY.subject]);
+    expect(discovery(data, CHEMISTRY.class).nodes.map(n => n.id)).toEqual([CHEMISTRY.subject, PHYSICS.subject]);
     expect(discovery(data, CHEMISTRY.subject).nodes.map(n => n.id)).toEqual([CHEMISTRY.chapter]);
     expect(discovery(data, CHEMISTRY.chapter).nodes.map(n => n.id)).toEqual([CHEMISTRY.topic]);
     expect(discovery(data, CHEMISTRY.chapter).lessons).toEqual([]);

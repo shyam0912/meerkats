@@ -7,6 +7,7 @@ import { catalogPath, chapterLabel, discovery } from './discovery';
 import { compactContext, contentState, plannedStandard, schoolCatalog, standardChoices, teacherLabel, type ContentState } from './schoolPilot';
 import '../../styles/v2-foundation.css';
 import './catalog.css';
+import { PHYSICS } from '../../../contracts/physics';
 
 function Badge({ state }: { state: ContentState }) {
   return <span className={`discovery-badge state-${state.toLowerCase()}`}>{state}</span>;
@@ -51,6 +52,9 @@ function Discovery({ data, parentId, standard, internal }: { data: CatalogData; 
   const heading = useRef<HTMLHeadingElement>(null); const root = useRef<HTMLDivElement>(null);
   const busy = useRef(false);
   const [error, setError] = useState('');
+  const [opening, setOpening] = useState(false);
+  const mounted = useRef(true);
+  useEffect(() => { mounted.current = true; return () => { mounted.current = false; }; }, []);
   useEffect(() => {
     const state = location.state as { focusId?: string } | null;
     const choice = Array.from(root.current?.querySelectorAll<HTMLButtonElement>('[data-choice-id]') ?? []).find(el => el.dataset.choiceId === state?.focusId);
@@ -67,6 +71,17 @@ function Discovery({ data, parentId, standard, internal }: { data: CatalogData; 
       launchLesson(version, definition, classNode.title, subject.title);
       navigate('/workspace');
     } catch { busy.current = false; setError('This lesson could not be started. Please try again.'); }
+  }
+  async function openChapter(id: string) {
+    const primary = id === PHYSICS.chapter ? data.lessons.find(l => l.id === PHYSICS.lesson && l.chapterId === id) : undefined;
+    if (!primary) { navigate(path(id)); return; }
+    if (busy.current) return;
+    busy.current = true; setOpening(true); setError('');
+    try {
+      const version = await loadLessonVersion(primary.publishedVersionId);
+      if (mounted.current) { busy.current = false; start(primary, version); }
+    } catch { if (mounted.current) { busy.current = false; setError('This experience could not be loaded. Please try opening the chapter again.'); } }
+    finally { if (mounted.current) setOpening(false); }
   }
   const goBack = () => navigate(planned ? path(null) : view.parent ? path(view.parent.kind === 'class' ? null : view.parent.parentId) : '/', { state: { focusId: planned ? 'standard-' + planned : view.parent?.id } });
   return <div ref={root}>
@@ -98,7 +113,7 @@ function Discovery({ data, parentId, standard, internal }: { data: CatalogData; 
           const chapter = chapterLabel(node.title);
           const definition = data.lessons.find(l => l.topicId === node.id);
           return <button className="discovery-choice" data-choice-id={node.id} data-catalog-id={node.id} key={node.id} aria-label={teacherLabel(node)}
-            onClick={() => navigate(path(node.id))}>
+            disabled={opening} onClick={() => { if (node.kind === 'chapter') void openChapter(node.id); else navigate(path(node.id)); }}>
             {(node.kind === 'class' || node.kind === 'subject') && <Motif chemistry={/chemistry/i.test(node.title)} />}
             {node.kind === 'chapter' && <span className="discovery-number">{chapter.number ?? 'Chapter'}</span>}
             <span className="discovery-choice-copy">
@@ -106,14 +121,17 @@ function Discovery({ data, parentId, standard, internal }: { data: CatalogData; 
               {node.kind === 'topic' && <span className="discovery-eyebrow">{definition ? 'View lesson preview' : 'Planned · No lesson available yet'}</span>}
               <span className="discovery-choice-title">{node.kind === 'chapter' ? chapter.title : teacherLabel(node)}</span>
               {node.kind === 'subject' && <span className="discovery-hint">{node.title.split(' · ').slice(1).join(' · ') || 'Choose a chapter'}</span>}
+              {node.id === PHYSICS.chapter && <span className="discovery-hint">Interactive prototype · Opens directly</span>}
             </span><span className="discovery-arrow" aria-hidden="true">→</span>
           </button>;
         })}
       </div>}
+      {view.parent?.id === PHYSICS.subject && data.lessons.filter(l => l.chapterId === PHYSICS.chapter).length > 1 && <button className="discovery-control" onClick={() => navigate(path(PHYSICS.chapter))}>All Lenses experiences</button>}
       {view.level === 'lesson' && view.lessons.map(lesson => <LessonPreview key={lesson.publishedVersionId} definition={lesson} onStart={version => start(lesson, version)} />)}
       {!schoolRoot && !view.nodes.length && !view.lessons.length && <section className="discovery-empty"><Badge state="Planned" /><h2>{view.empty}</h2><p>{view.level === 'lesson' ? 'This concept does not have an interactive lesson yet. Choose another concept to continue.' : 'Choose another selection using Back, or return Home.'}</p></section>}
     </>}
     {error && <p role="alert" className="discovery-error">{error}</p>}
+    {opening && <p role="status">Opening interactive experience…</p>}
     {internal && <p className="discovery-source">Developer fixtures · {import.meta.env.VITE_API_ENABLED === 'true' ? 'Catalog from the school API' : 'Bundled catalog'}</p>}
   </div>;
 }

@@ -1,14 +1,23 @@
 import { useNavigate, useSearchParams } from "react-router-dom";
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import SessionHeader from "../../components/workspace/SessionHeader";
 import TeachingSurface from "../../components/workspace/TeachingSurface";
 import TeacherControls from "../../components/workspace/TeacherControls";
 import useDrawing from "../../store/useDrawing";
 import { useClassroom } from "../../store/useClassroom";
+import InteractiveSessionHeader from '../../components/workspace/InteractiveSessionHeader';
+import '../../styles/v2-foundation.css';
+import './interactive-workspace.css';
 
 export default function Workspace() {
   const navigate = useNavigate();
-  const { selection, setSelection, activatePersistence, storageChecked } = useDrawing();
+  const { selection, setSelection, activatePersistence, storageChecked, lesson, isInteracting } = useDrawing();
+  const continuous = lesson?.version.activities.some(a => a.kind === 'thin-lens');
+  const [focused, setFocused] = useState(false);
+  useEffect(() => {
+    const leave = (event: KeyboardEvent) => { if (event.key === 'Escape' && !isInteracting && !document.querySelector('dialog[open]')) setFocused(false); };
+    window.addEventListener('keydown', leave); return () => window.removeEventListener('keydown', leave);
+  }, [isInteracting]);
   const { sessionId } = useClassroom();
   const [params, setParams] = useSearchParams();
   useEffect(() => { activatePersistence(); }, [activatePersistence]);
@@ -23,8 +32,8 @@ export default function Workspace() {
   if (params.get('session') && params.get('session') !== sessionId)
     return <main className="p-10" role="status">Opening teaching session…</main>;
   if (!storageChecked) return <main className="p-10" role="status">Preparing teaching session…</main>;
-  return <div className="teacher-workspace">
-    <SessionHeader onBack={() => navigate("/")} />
+  return <div className={`teacher-workspace${continuous ? ' mk-v2 interactive-workspace' : ''}${focused ? ' is-focused' : ''}`}>
+    {continuous ? <InteractiveSessionHeader focused={focused} onFocus={() => setFocused(value => !value)} /> : <SessionHeader onBack={() => navigate("/")} />}
     <TeachingSurface selection={selection} onSelect={setSelection} />
     <TeacherControls />
   </div>;

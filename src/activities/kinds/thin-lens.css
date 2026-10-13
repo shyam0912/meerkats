@@ -1,0 +1,32 @@
+.lens-scene { width: 1200px; height: 675px; color: #203e39; background: #fcfcf6; position: relative; font-family: 'Segoe UI', sans-serif; }
+.lens-heading { height: 64px; padding: 12px 34px 0; display: flex; justify-content: space-between; align-items: center; }
+.lens-heading span { font-size: 16px; font-weight: 650; letter-spacing: .14em; }
+.lens-heading h2 { font-size: 30px; font-weight: 650; line-height: 1.1; }
+.lens-heading p { font-size: 19px; color: #52675e; }
+.lens-diagram { width: 1200px; height: 420px; display: block; touch-action: none; }
+.lens-diagram text { fill: #52675e; font-size: 24px; font-weight: 600; }
+.lens-diagram .lens-axis-label, .lens-diagram .lens-drag-hint { font-size: 21px; font-weight: 400; }
+.lens-diagram .lens-focal-label, .lens-diagram .lens-object-label { font-size: 30px; font-weight: 700; fill: #203e39; paint-order: stroke; stroke: #fcfcf6; stroke-width: 6px; stroke-linejoin: round; }
+.lens-diagram .lens-image-label { font-size: 31px; font-weight: 750; fill: #81365e; paint-order: stroke; stroke: #fcfcf6; stroke-width: 10px; stroke-linejoin: round; }
+.lens-diagram .lens-ray-key text { font-size: 23px; fill: #294d44; }
+.lens-offscreen rect { fill: #f6ecf1; stroke: #b3879e; stroke-width: 1.5; }
+.lens-diagram .lens-offscreen text { fill: #722b51; font-size: 25px; font-weight: 650; }
+.lens-object { cursor: grab; touch-action: none; outline: none; }
+.lens-object:active { cursor: grabbing; }
+.lens-object-target { fill: transparent; stroke: transparent; stroke-width: 3; }
+.lens-object:hover .lens-object-target { fill: #214f4509; stroke: #214f4530; }
+.lens-object:focus-visible .lens-object-target { stroke: #97501b; }
+.lens-result { position: absolute; left: 34px; right: 34px; top: 470px; display: flex; justify-content: space-between; gap: 16px; align-items: center; }
+.lens-result strong { font-size: 24px; }
+.lens-result span { font-size: 20px; text-align: right; max-width: 500px; }
+.lens-properties { position: absolute; top: 524px; left: 28px; right: 28px; height: 120px; display: grid; grid-template-columns: 330px 1fr 1fr; align-items: center; gap: 30px; padding: 8px 20px; border: 1px solid #ced7c9; border-radius: 20px; background: #f0f3e9; }
+.lens-switch { display: flex; gap: 6px; }
+.lens-properties button { min-width: 150px; min-height: 88px; font-size: 25px; border: 1px solid #bdcdbf; border-radius: 14px; cursor: pointer; background: #fcfcf6; }
+.lens-properties button[aria-pressed=true] { background: #214f45; color: #fcfcf6; border-color: #214f45; }
+.lens-properties label { font-size: 23px; font-weight: 600; }
+.lens-properties label span { display: flex; justify-content: space-between; gap: 8px; }
+.lens-properties output { font-weight: 400; }
+.lens-properties input { width: 100%; height: 78px; accent-color: #214f45; cursor: pointer; touch-action: none; }
+.lens-properties:disabled { opacity: .55; }
+.lens-properties :focus-visible { outline: 4px solid #97501b; outline-offset: 2px; }
+.lens-model-note { position: absolute; bottom: 8px; width: 100%; text-align: center; font-size: 18px; color: #52675e; }

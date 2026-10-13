@@ -1,0 +1,24 @@
+.interactive-workspace { background: var(--mk-canvas, #f3f4ed); color: #203e39; font-family: 'Segoe UI', sans-serif; }
+.interactive-session-header { flex: none; height: 88px; display: flex; gap: 24px; align-items: center; padding: 12px 24px; border-bottom: 1px solid #ced7c9; }
+.interactive-kicker { font-size: 12px; font-weight: 650; letter-spacing: .12em; color: #52675e; }
+.interactive-session-header h1 { font-size: 27px; font-weight: 650; }
+.interactive-session-header h1 small { font-size: 19px; font-weight: 400; }
+.interactive-save { margin-left: auto; font-size: 14px; color: #52675e; }
+.interactive-session-header > button:last-child { margin-left: auto; }
+.interactive-workspace .teaching-area { padding: 12px; }
+.interactive-workspace .surface-mode-label { display: none; }
+.interactive-workspace .fitted-scene { box-shadow: none; outline: 1px solid #d9dfd1; border-radius: 18px; }
+.interactive-workspace .teacher-controls { min-height: 80px; padding: 10px 20px; background: #fcfcf6; border-color: #ced7c9; }
+.interactive-workspace .workspace-button { min-height: 60px; border-color: #ced7c9; color: #203e39; }
+.interactive-workspace .workspace-button[aria-pressed=true] { background: #214f45; color: #fcfcf6; box-shadow: none; }
+.interactive-workspace .activity-actions .explore-guidance { font-size: 17px; max-width: 280px; }
+.interactive-workspace.is-focused .interactive-session-header { height: 62px; padding-block: 0; }
+.interactive-workspace.is-focused .interactive-kicker { display: none; }
+.interactive-workspace.is-focused .interactive-session-header h1 { font-size: 21px; }
+@media (max-width: 1100px) {
+  .interactive-session-header { height: 78px; padding: 8px 16px; gap: 14px; }
+  .interactive-workspace .teacher-controls { padding-inline: 12px; gap: 8px; }
+  .interactive-workspace .activity-actions .explore-guidance { max-width: 230px; font-size: 15px; }
+  .interactive-save { max-width: 170px; }
+}
+@media (prefers-reduced-motion: reduce) { .interactive-workspace *, .interactive-workspace *::before { transition: none !important; animation: none !important; } }
