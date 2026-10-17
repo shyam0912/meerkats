@@ -24,6 +24,7 @@ function SessionDrawingProvider({ children, owner, identity, restored, lessonVer
   const [selectedTool, setSelectedTool] = useState<DrawingTool>("pen");
   const [strokeColor, setStrokeColor] = useState("#000000");
   const [strokeWidth, setStrokeWidth] = useState(3);
+  const [eraserWidth, setEraserWidth] = useState(18);
   const [isInteracting, setInteracting] = useState(false);
   const [selection, setSelection] = useState<SessionSnapshot['selection']>(restored?.snapshot.selection ?? null);
   const [saveStatus, setSaveStatus] = useState("Unsaved");
@@ -57,13 +58,17 @@ function SessionDrawingProvider({ children, owner, identity, restored, lessonVer
   const undo = useCallback(() => dispatch({ type: "document", documentId, action: { type: "undo" } }), [documentId]);
   const redo = useCallback(() => dispatch({ type: "document", documentId, action: { type: "redo" } }), [documentId]);
   const clearCanvas = useCallback(() => dispatch({ type: "document", documentId, action: { type: "clear" } }), [documentId]);
+  const flushBeforeLeave = useCallback(async () => {
+    await persistence.flush();
+    return persistence.canLeave;
+  }, [persistence]);
   const value = useMemo(() => ({
     lesson: session.lesson, selectActivity, updateActivity,
-    document: state.document, mode: session.mode, setMode, selectedTool, strokeColor, strokeWidth, isInteracting,
+    document: state.document, mode: session.mode, setMode, selectedTool, strokeColor, strokeWidth, eraserWidth, isInteracting,
     canUndo: state.past.length > 0, canRedo: state.future.length > 0,
-    setSelectedTool, setStrokeColor, setStrokeWidth, setInteracting,
+    setSelectedTool, setStrokeColor, setStrokeWidth, setEraserWidth, setInteracting, flushBeforeLeave,
     commitStroke, undo, redo, clearCanvas, saveStatus, storageChecked, selection, setSelection, activatePersistence,
-  }), [state, session.mode, session.lesson, selectActivity, updateActivity, setMode, selectedTool, strokeColor, strokeWidth, isInteracting, commitStroke, undo, redo, clearCanvas, saveStatus, storageChecked, selection, activatePersistence]);
+  }), [state, session.mode, session.lesson, selectActivity, updateActivity, setMode, selectedTool, strokeColor, strokeWidth, eraserWidth, flushBeforeLeave, isInteracting, commitStroke, undo, redo, clearCanvas, saveStatus, storageChecked, selection, activatePersistence]);
   return <DrawingContext.Provider value={value}>{children}</DrawingContext.Provider>;
 }
 export default function DrawingProvider({ children }: { children: ReactNode }) {

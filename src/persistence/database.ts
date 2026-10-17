@@ -28,6 +28,7 @@ export const localRecordSchema = z.strictObject({
 export type LocalRecord = z.infer<typeof localRecordSchema>;
 export const newRecord = (snapshot: SessionSnapshot): LocalRecord => ({ snapshot, generation: 0, savedAt: '', sync: {} });
 export class LocalConflict extends Error { constructor() { super('This session changed in another tab. Reload before continuing.'); } }
+export interface RecentBoard { id: string; savedAt: string; inkCount: number }
 export class SessionRepository {
   private name: string;
   constructor(name = 'meerkats-teaching-v1') { this.name = name; }
@@ -51,6 +52,34 @@ export class SessionRepository {
       const record = localRecordSchema.parse(value);
       if (record.snapshot.identity.id !== id) throw new Error('Stored session identity mismatch');
       return record;
+    } finally { db.close(); }
+  }
+  /** Read-only discovery. Invalid records are left untouched; retain only bounded summaries. */
+  async recentBoards(limit = 20): Promise<{ boards: RecentBoard[]; unavailable: number }> {
+    const db = await this.open();
+    try {
+      return await new Promise((resolve, reject) => {
+        const boards: RecentBoard[] = []; let unavailable = 0;
+        const tx = db.transaction('sessions', 'readonly');
+        const request = tx.objectStore('sessions').openCursor();
+        request.onsuccess = () => {
+          const cursor = request.result; if (!cursor) return;
+          const parsed = localRecordSchema.safeParse(cursor.value);
+          if (!parsed.success || parsed.data.snapshot.identity.id !== cursor.key || !Number.isFinite(Date.parse(parsed.data.savedAt))) unavailable++;
+          else {
+            const { snapshot, savedAt } = parsed.data;
+            if (!snapshot.lesson && snapshot.identity.context.classId === null && snapshot.identity.context.subjectId === null &&
+                !snapshot.identity.context.classLabel && !snapshot.identity.context.subjectLabel) {
+              boards.push({ id: snapshot.identity.id, savedAt, inkCount: snapshot.whiteboard.objects.length });
+              boards.sort((a, b) => b.savedAt.localeCompare(a.savedAt) || a.id.localeCompare(b.id));
+              boards.splice(Math.max(0, limit));
+            }
+          }
+          cursor.continue();
+        };
+        tx.oncomplete = () => resolve({ boards, unavailable });
+        tx.onabort = () => reject(tx.error ?? new Error('Recent boards unavailable'));
+      });
     } finally { db.close(); }
   }
   async save(record: LocalRecord): Promise<LocalRecord> {

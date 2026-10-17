@@ -21,6 +21,8 @@ export class PersistenceController {
   private remote?: SessionApi;
   private durableSnapshot?: SessionSnapshot;
   private onStorageChecked?: () => void;
+  // Navigation may proceed after local durability; network acknowledgement is independent.
+  get canLeave() { return this.latest === this.durableSnapshot && !this.localFailure && !this.invalidDocument; }
   constructor(snapshot: SessionSnapshot, notify: (status: string) => void,
     repository = new SessionRepository(), remote?: SessionApi, restored?: LocalRecord, onStorageChecked?: () => void) {
     this.notify = notify; this.repository = repository; this.remote = remote;

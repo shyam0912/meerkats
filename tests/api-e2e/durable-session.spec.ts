@@ -1,5 +1,6 @@
 import { test, expect, type Page } from '@playwright/test';
 import { sessionResponseSchema } from '../../contracts';
+import { launchNeutralWorkspace } from '../helpers/neutral';
 const surface = (page: Page, content = false) => page.getByRole('region', { name: content ? 'Content annotation surface' : 'Whiteboard drawing surface' });
 async function dot(page: Page, content = false) {
   const box = await surface(page, content).boundingBox(); if (!box) throw new Error('Surface missing');
@@ -7,7 +8,7 @@ async function dot(page: Page, content = false) {
 }
 test('real API acknowledgement, retrieval and rendering in an empty browser storage context', async ({ page, browser }) => {
   const errors: string[] = []; page.on('pageerror', error => errors.push(error.message));
-  await page.goto('/'); await page.getByRole('button', { name: 'Whiteboard' }).click(); await dot(page);
+  await launchNeutralWorkspace(page); await dot(page);
   await page.getByRole('button', { name: 'Annotate', exact: true }).click(); await dot(page, true);
   await expect(page.getByRole('status')).toHaveText('Ink synced · Context saved on device', { timeout: 20000 });
   const url = page.url(); const id = new URL(url).searchParams.get('session');

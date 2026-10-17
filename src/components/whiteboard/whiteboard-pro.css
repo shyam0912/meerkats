@@ -1,0 +1,56 @@
+.wb-pro { background: var(--mk-canvas); color: var(--mk-text); font-family: var(--mk-font); }
+.wb-header { display: flex; align-items: center; gap: 16px; padding: 12px 24px; min-height: 88px; border-bottom: 1px solid var(--mk-border); }
+.wb-title span { font-size: 12px; letter-spacing: .16em; font-weight: 700; }
+.wb-title h1 { font-size: 28px; font-weight: 650; line-height: 1.1; }
+.wb-save { margin-left: auto; max-width: 240px; font-size: 15px; color: var(--mk-muted); }
+.wb-save-error { color: #9b302e; font-weight: 650; }
+.wb-pro .workspace-button { min-height: 60px; min-width: 60px; border-color: var(--mk-border); color: var(--mk-text); font-size: 18px; }
+.wb-pro .workspace-button[aria-pressed=true] { color: var(--mk-on-accent); background: var(--mk-accent); box-shadow: none; }
+.wb-pro .workspace-button:focus-visible { outline: 3px solid var(--mk-focus); outline-offset: 3px; }
+.wb-pro .surface-mode-label { display: none; }
+.wb-pro .teaching-area { padding: 12px 20px; }
+.wb-pro .fitted-scene { border-radius: 4px; outline: 1px solid var(--mk-border); box-shadow: 0 3px 14px #203e3906; }
+.wb-controls { display: flex; align-items: center; gap: 20px; padding: 12px 24px; min-height: 88px; background: #fcfcf6; border-top: 1px solid var(--mk-border); }
+.wb-controls .drawing-toolbar { gap: 10px; }
+.wb-footer-note { margin-left: auto; font-size: 16px; color: var(--mk-muted); }
+.wb-pro .ink-settings small { font-size: 14px; }
+.wb-pro .clear-button { margin-left: 16px; color: #9b302e; }
+.wb-ink-tray { width: min(520px, calc(100vw - 32px)); margin: auto auto 104px; max-height: calc(100dvh - 136px); overflow: auto; background: #fcfcf6; }
+.wb-ink-tray label { margin-top: 12px; }
+.wb-ink-tray p { margin-top: 10px; }
+.wb-presets { display: flex; gap: 10px; margin-top: 10px; }
+.wb-presets button { flex: 1; }
+.wb-colour span { display: block; width: 26px; height: 26px; border-radius: 50%; border: 2px solid #ffffff; }
+.wb-pro .wb-colour[aria-pressed=true] { outline: 3px solid var(--mk-focus); outline-offset: 1px; }
+.wb-recent { margin: auto; width: min(660px, calc(100vw - 32px)); max-height: calc(100dvh - 32px); overflow: auto; padding: 24px; border-radius: 20px; color: var(--mk-text); background: #fcfcf6; }
+.wb-recent::backdrop { background: #203e3945; }
+.wb-dialog-heading { display: flex; align-items: center; justify-content: space-between; gap: 16px; }
+.wb-dialog-heading h2 { font-size: 28px; font-weight: 650; }
+.wb-recent p { margin-top: 12px; font-size: 17px; }
+.wb-recent ul { list-style: none; padding: 0; margin-top: 16px; }
+.wb-recent li + li { margin-top: 8px; }
+.wb-recent li button { width: 100%; text-align: left; justify-content: space-between; padding: 14px; }
+.wb-recent small { display: block; font-size: 14px; font-weight: 400; margin-top: 4px; }
+.wb-recent .wb-local-note { font-size: 14px; color: var(--mk-muted); }
+.wb-save-help { padding: 8px 24px; background: #fff1e4; color: #743c18; font-size: 16px; line-height: 1.4; }
+.wb-message { position: fixed; right: 16px; bottom: 104px; display: flex; align-items: center; gap: 16px; max-width: calc(100vw - 32px); padding: 12px 16px; border: 1px solid var(--mk-border); border-radius: 14px; background: #fcfcf6; box-shadow: var(--mk-shadow); }
+.wb-focused .wb-header { min-height: 72px; padding-block: 6px; }
+.wb-focused .wb-save { margin-left: 0; margin-right: auto; max-width: none; }
+.wb-focused .wb-controls { justify-content: center; }
+@media (max-width: 1100px) {
+  .wb-header { padding: 8px 16px; gap: 10px; min-height: 80px; }
+  .wb-title h1 { font-size: 24px; }
+  .wb-save { max-width: 180px; font-size: 14px; }
+  .wb-pro .workspace-button { font-size: 17px; padding-inline: 12px; }
+  .wb-controls { padding: 10px 16px; min-height: 80px; }
+  .wb-footer-note { display: none; }
+  .wb-controls .drawing-toolbar { width: 100%; justify-content: center; }
+  .wb-pro .teaching-area { padding: 10px 16px; }
+}
+@media (max-height: 650px) {
+  .wb-ink-tray { margin-bottom: 92px; padding: 16px; max-height: calc(100dvh - 108px); }
+  .wb-ink-tray .ink-dialog-heading { margin-bottom: 8px; }
+  .wb-ink-tray input { height: 48px; }
+  .wb-ink-tray p { font-size: 13px; }
+}
+@media (prefers-reduced-motion: reduce) { .wb-pro *, .wb-pro *::before { transition: none !important; animation: none !important; } }

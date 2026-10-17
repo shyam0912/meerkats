@@ -19,12 +19,15 @@ export interface DrawingContextType {
   selectedTool: DrawingTool;
   strokeColor: string;
   strokeWidth: number;
+  eraserWidth: number;
   isInteracting: boolean;
   canUndo: boolean;
   canRedo: boolean;
   setSelectedTool: (tool: DrawingTool) => void;
   setStrokeColor: (color: string) => void;
   setStrokeWidth: (width: number) => void;
+  setEraserWidth: (width: number) => void;
+  flushBeforeLeave: () => Promise<boolean>;
   setInteracting: (value: boolean) => void;
   commitStroke: (stroke: Stroke) => void;
   clearCanvas: () => void;

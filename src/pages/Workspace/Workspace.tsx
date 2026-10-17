@@ -8,6 +8,7 @@ import { useClassroom } from "../../store/useClassroom";
 import InteractiveSessionHeader from '../../components/workspace/InteractiveSessionHeader';
 import '../../styles/v2-foundation.css';
 import './interactive-workspace.css';
+import WhiteboardPro from '../../components/whiteboard/WhiteboardPro';
 
 export default function Workspace() {
   const navigate = useNavigate();
@@ -18,7 +19,7 @@ export default function Workspace() {
     const leave = (event: KeyboardEvent) => { if (event.key === 'Escape' && !isInteracting && !document.querySelector('dialog[open]')) setFocused(false); };
     window.addEventListener('keydown', leave); return () => window.removeEventListener('keydown', leave);
   }, [isInteracting]);
-  const { sessionId } = useClassroom();
+  const { sessionId, selectedClass, selectedSubject } = useClassroom();
   const [params, setParams] = useSearchParams();
   useEffect(() => { activatePersistence(); }, [activatePersistence]);
   useEffect(() => {
@@ -32,6 +33,7 @@ export default function Workspace() {
   if (params.get('session') && params.get('session') !== sessionId)
     return <main className="p-10" role="status">Opening teaching session…</main>;
   if (!storageChecked) return <main className="p-10" role="status">Preparing teaching session…</main>;
+  if (!lesson && !selectedClass && !selectedSubject) return <WhiteboardPro />;
   return <div className={`teacher-workspace${continuous ? ' mk-v2 interactive-workspace' : ''}${focused ? ' is-focused' : ''}`}>
     {continuous ? <InteractiveSessionHeader focused={focused} onFocus={() => setFocused(value => !value)} /> : <SessionHeader onBack={() => navigate("/")} />}
     <TeachingSurface selection={selection} onSelect={setSelection} />

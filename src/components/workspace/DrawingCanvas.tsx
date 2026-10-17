@@ -15,7 +15,7 @@ export default function DrawingCanvas({ enabled = true, transparent = false }: {
   const [size, setSize] = useState({ width: 1, height: 1 });
   const [inputError, setInputError] = useState("");
   const {
-    document, selectedTool, strokeColor, strokeWidth,
+    document, selectedTool, strokeColor, strokeWidth, eraserWidth,
     commitStroke, setInteracting,
   } = useDrawing();
 
@@ -86,7 +86,7 @@ export default function DrawingCanvas({ enabled = true, transparent = false }: {
   const begin = (event: ReactPointerEvent<HTMLDivElement>) => {
     if (!enabled || event.button !== 0 || !event.isPrimary || size.width <= 1 || size.height <= 1) return;
     if (!manager.begin(event.pointerId,
-      { tool: selectedTool, color: strokeColor, width: strokeWidth }, point(event), crypto.randomUUID())) return;
+      { tool: selectedTool, color: strokeColor, width: selectedTool === "eraser" ? eraserWidth / 6 : strokeWidth }, point(event), crypto.randomUUID())) return;
     try {
       event.currentTarget.setPointerCapture(event.pointerId);
     } catch {
