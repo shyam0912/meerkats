@@ -30,7 +30,10 @@ async function restore(): Promise<LocalRecord | undefined> {
   result.sync = Object.fromEntries(remote.documents.map(d => [d.document.id, {
     serverRevision: d.serverRevision, acknowledgedLocalRevision: d.document.localRevision,
   }]));
-  return new SessionRepository().save(result);
+  const repository = new SessionRepository();
+  await repository.save(result);
+  // Remote v1 recovery follows the same atomic backup/migration path as local v1.
+  return repository.load(id);
 }
 // React Strict Mode replays effects. Recovery (including its first device transaction)
 // is one operation per page load, not a second concurrent writer.

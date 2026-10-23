@@ -37,6 +37,23 @@
 .wb-focused .wb-header { min-height: 72px; padding-block: 6px; }
 .wb-focused .wb-save { margin-left: 0; margin-right: auto; max-width: none; }
 .wb-focused .wb-controls { justify-content: center; }
+.wb-pages { margin: auto; width: min(1040px, calc(100vw - 32px)); max-height: calc(100dvh - 32px); padding: 20px; border-radius: 20px; color: var(--mk-text); background: #fcfcf6; }
+.wb-pages[open] { display: flex; flex-direction: column; gap: 12px; }
+.wb-pages::backdrop { background: #203e3945; }
+.wb-page-actions, .wb-backgrounds, .wb-page-row { display: flex; align-items: center; gap: 10px; }
+.wb-page-actions p, .wb-page-help { color: var(--mk-muted); font-size: 15px; }
+.wb-backgrounds button { flex: 1; }
+.wb-pages-scroll { overflow: auto; min-height: 0; padding: 4px; }
+.wb-page-list { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); list-style: none; gap: 20px; padding: 0; }
+.wb-page-preview { width: 100%; flex-direction: column; padding: 8px; gap: 8px; }
+.wb-page-preview img, .wb-preview-placeholder { width: 100%; aspect-ratio: 16 / 9; object-fit: contain; background: white; }
+.wb-page-row { margin-top: 8px; }
+.wb-page-row button { flex: 1; }
+.wb-pages section { margin-top: 20px; border-top: 1px solid var(--mk-border); padding-top: 12px; }
+.wb-pages section h3 { font-size: 22px; font-weight: 650; }
+.wb-pages section button { margin: 8px 8px 0 0; }
+.wb-capacity { position: absolute; bottom: 12px; left: 12px; right: 12px; display: flex; align-items: center; gap: 12px; padding: 12px; background: #fff1e4; color: #743c18; font-size: 16px; }
+.wb-controls .wb-pages-trigger { white-space: nowrap; }
 @media (max-width: 1100px) {
   .wb-header { padding: 8px 16px; gap: 10px; min-height: 80px; }
   .wb-title h1 { font-size: 24px; }
@@ -44,7 +61,7 @@
   .wb-pro .workspace-button { font-size: 17px; padding-inline: 12px; }
   .wb-controls { padding: 10px 16px; min-height: 80px; }
   .wb-footer-note { display: none; }
-  .wb-controls .drawing-toolbar { width: 100%; justify-content: center; }
+  .wb-controls .drawing-toolbar { justify-content: center; }
   .wb-pro .teaching-area { padding: 10px 16px; }
 }
 @media (max-height: 650px) {

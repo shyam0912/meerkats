@@ -2,10 +2,11 @@ import 'fake-indexeddb/auto';
 import { describe, expect, it, vi } from 'vitest';
 import { createDrawingSession, sessionReducer } from '../drawing/session';
 import { ToolManager } from '../drawing/ToolManager';
-import { deserializeDocument, deserializeSession, serializeSession, snapshotSchema } from './serialization';
+import { deserializeSession, serializeSession, snapshotSchema } from './serialization';
 import { newRecord, SessionRepository } from './database';
 import { PersistenceController } from './controller';
 import { SaveError, type SessionApi } from './api';
+import { whiteboardV2Schema } from '../../contracts';
 
 function fixture() {
   const identity = { id: crypto.randomUUID(), context: { classId: 'prototype:class:1', subjectId: 'prototype:subject:science', classLabel: 'STD 1', subjectLabel: 'Science' } };
@@ -22,17 +23,18 @@ describe('versioned serialization and device durability', () => {
     const { snapshot, session, stroke } = fixture();
     const restored = deserializeSession(JSON.parse(JSON.stringify(snapshot)));
     expect(restored.whiteboard.document).toEqual(session.whiteboard.document);
-    expect(restored.whiteboard.document.objects).toEqual([stroke]);
-    expect(restored.whiteboard.past).toEqual([]);
+    expect(restored.whiteboard.document.pages[0]!.objects).toEqual([stroke]);
+    expect(restored.whiteboard.histories).toEqual({});
     expect(Object.keys(snapshot.whiteboard)).not.toContain('revision');
     expect(snapshot.whiteboard.localRevision).toBe(1);
   });
   it('rejects unsupported versions, malformed coordinates and wrong ownership without partial hydration', () => {
     const { snapshot } = fixture();
-    expect(() => deserializeDocument({ ...snapshot.whiteboard, schemaVersion: 2 })).toThrow();
-    expect(() => deserializeDocument({ ...snapshot.whiteboard, objects: [{ ...snapshot.whiteboard.objects[0], points: [1] }] })).toThrow();
+    const board = whiteboardV2Schema.parse(snapshot.whiteboard);
+    expect(() => deserializeSession({ ...snapshot, whiteboard: { ...board, schemaVersion: 99 } })).toThrow();
+    expect(() => deserializeSession({ ...snapshot, whiteboard: { ...board, pages: [{ ...board.pages[0], objects: [{ ...board.pages[0]!.objects[0], points: [1] }] }] } })).toThrow();
     expect(() => snapshotSchema.parse({ ...snapshot, identity: { ...snapshot.identity, id: crypto.randomUUID() } })).toThrow();
-    expect(() => deserializeDocument({ ...snapshot.whiteboard, pointerId: 1 })).toThrow();
+    expect(() => deserializeSession({ ...snapshot, whiteboard: { ...snapshot.whiteboard, pointerId: 1 } })).toThrow();
   });
   it('stores and restores separate whiteboard and annotation snapshots with current context', async () => {
     const { snapshot } = fixture(); const repo = repository();
@@ -57,7 +59,7 @@ describe('versioned serialization and device durability', () => {
     manager.cancel();
     expect(serializeSession(session, identity, null)).toEqual(during);
     const repo = repository(); await repo.save(newRecord(during));
-    expect((await repo.load(identity.id))?.snapshot.whiteboard.objects).toHaveLength(1);
+    expect(whiteboardV2Schema.parse((await repo.load(identity.id))?.snapshot.whiteboard).pages[0]!.objects).toHaveLength(1);
   });
   it('coalesces settled actions before saving', async () => {
     const { snapshot } = fixture(); const repo = repository(); const spy = vi.spyOn(repo, 'save');
@@ -132,7 +134,7 @@ describe('durable outbox and truthful save acknowledgement', () => {
     controller.update(snapshot); await controller.flush(); await controller.sync(); await controller.sync(); controller.stop();
     expect(api.save).toHaveBeenCalledTimes(1);
     expect(notify).toHaveBeenLastCalledWith('Saved on this device · Server needs attention');
-    expect((await repo.load(snapshot.identity.id))?.snapshot.whiteboard.objects).toHaveLength(1);
+    expect(whiteboardV2Schema.parse((await repo.load(snapshot.identity.id))?.snapshot.whiteboard).pages[0]!.objects).toHaveLength(1);
   });
   it('persists a newer completed action while an earlier network acknowledgement is delayed', async () => {
     const { snapshot } = fixture(); const repo = repository(); const api = remote();
@@ -147,7 +149,8 @@ describe('durable outbox and truthful save acknowledgement', () => {
     });
     const controller = new PersistenceController(snapshot, () => {}, repo, api);
     controller.update(snapshot); await controller.flush(); const syncing = controller.sync(); await start;
-    const newer = { ...snapshot, whiteboard: { ...snapshot.whiteboard, localRevision: 2, objects: [] } };
+    const board = whiteboardV2Schema.parse(snapshot.whiteboard);
+    const newer = { ...snapshot, whiteboard: { ...board, localRevision: 2, pages: [{ ...board.pages[0]!, objects: [] }] } };
     controller.update(newer); await controller.flush();
     expect((await repo.load(snapshot.identity.id))?.snapshot.whiteboard.localRevision).toBe(2);
     expect((await repo.load(snapshot.identity.id))?.sync[snapshot.whiteboard.id]?.pending?.document.localRevision).toBe(1);

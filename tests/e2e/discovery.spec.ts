@@ -27,7 +27,17 @@ for (const viewport of [{ width: 1920, height: 1080 }, { width: 1280, height: 72
     expect(box!.y + box!.height).toBeLessThanOrEqual(viewport.height);
     expect(await page.evaluate(() => document.documentElement.scrollHeight <= innerHeight)).toBe(true);
     await start.click(); await expect(page.getByRole('button', { name: 'Activity outline' })).toContainText('1 of 7');
-    const url = page.url(); await page.reload(); await expect(page.getByRole('button', { name: 'Activity outline' })).toContainText('1 of 7');
+    const url = page.url();
+    // A just-launched lesson can still be saving. Exercise the deliberate Stay
+    // guard rather than letting Playwright silently dismiss it and abort reload.
+    let stayed = false;
+    page.once('dialog', async dialog => { expect(dialog.type()).toBe('beforeunload'); stayed = true; await dialog.dismiss(); });
+    await page.reload({ timeout: 5000 }).catch(error => { if (!stayed) throw error; });
+    if (stayed) {
+      await expect(page.getByRole('status')).toHaveText('Saved on this device');
+      await page.reload();
+    }
+    await expect(page.getByRole('button', { name: 'Activity outline' })).toContainText('1 of 7');
     expect(page.url()).toBe(url);
   });
 }

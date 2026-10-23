@@ -8,6 +8,9 @@ export interface DocumentOwner {
   target?: { kind: "whiteboard" } | { kind: "annotation"; sceneId: string; lessonVersionId?: string; activityId?: string };
 }
 export interface DrawingDocument {
+  /** Rendering projection only; a whiteboard page keeps the aggregate document ID. */
+  pageId?: string;
+  background?: import('../../contracts').PageBackground;
   schemaVersion: 1;
   id: string;
   owner: DocumentOwner;

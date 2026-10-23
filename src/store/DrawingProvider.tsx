@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useReducer, useState, type ReactNode } from "react";
+import { useCallback, useEffect, useLayoutEffect, useMemo, useReducer, useState, type ReactNode } from "react";
 import type { DocumentOwner } from "../drawing/document";
 import { activeDocument, createDrawingSession, createLessonSession, sessionReducer, type TeachingMode } from "../drawing/session";
 import type { LessonVersion, ActivityState } from '../../contracts/lesson';
@@ -11,6 +11,7 @@ import { PersistenceController } from "../persistence/controller";
 import { api } from "../persistence/api";
 import type { LocalRecord } from "../persistence/database";
 import type { SessionIdentity } from "../../contracts";
+import type { PageAction } from '../drawing/whiteboard';
 
 function SessionDrawingProvider({ children, owner, identity, restored, lessonVersion }: {
   children: ReactNode; owner: DocumentOwner; identity: SessionIdentity; restored?: LocalRecord; lessonVersion?: LessonVersion;
@@ -21,6 +22,7 @@ function SessionDrawingProvider({ children, owner, identity, restored, lessonVer
     }));
   const state = activeDocument(session);
   const documentId = state.document.id;
+  const pageId = state.document.pageId;
   const [selectedTool, setSelectedTool] = useState<DrawingTool>("pen");
   const [strokeColor, setStrokeColor] = useState("#000000");
   const [strokeWidth, setStrokeWidth] = useState(3);
@@ -34,7 +36,7 @@ function SessionDrawingProvider({ children, owner, identity, restored, lessonVer
   const [persistence] = useState(() => new PersistenceController(
     serializeSession(session, identity, selection), setSaveStatus, undefined,
     import.meta.env.VITE_API_ENABLED === "true" ? api : undefined, restored, () => setStorageChecked(true)));
-  useEffect(() => {
+  useLayoutEffect(() => {
     if (!persistenceEnabled) return;
     // Only reducer/context changes schedule writes. Pointer drafts live outside this state.
     try { persistence.update(serializeSession(session, identity, selection)); }
@@ -42,10 +44,23 @@ function SessionDrawingProvider({ children, owner, identity, restored, lessonVer
   }, [persistence, persistenceEnabled, session, identity, selection]);
   useEffect(() => {
     const flush = () => { void persistence.flush(); };
+    const beforeUnload = (event: BeforeUnloadEvent) => {
+      if (!persistence.hasUnsavedChanges) return;
+      // Browsers do not await IndexedDB on unload. Offer Stay until the
+      // transaction completes; forced exits and crashes cannot be guaranteed.
+      flush();
+      event.preventDefault();
+      event.returnValue = '';
+    };
+    const visibility = () => { if (document.visibilityState === 'hidden') flush(); };
+    window.addEventListener("beforeunload", beforeUnload);
+    document.addEventListener("visibilitychange", visibility);
     window.addEventListener("pagehide", flush);
     window.addEventListener("online", persistence.resume);
     return () => {
       window.removeEventListener("pagehide", flush);
+      window.removeEventListener("beforeunload", beforeUnload);
+      document.removeEventListener("visibilitychange", visibility);
       window.removeEventListener("online", persistence.resume);
       persistence.stop();
     };
@@ -53,22 +68,24 @@ function SessionDrawingProvider({ children, owner, identity, restored, lessonVer
   const setMode = useCallback((mode: TeachingMode) => dispatch({ type: "mode", mode }), []);
   const selectActivity = useCallback((id: string) => dispatch({ type: 'activity', id }), []);
   const updateActivity = useCallback((id: string, state: ActivityState) => dispatch({ type: 'activity-state', id, state }), []);
+  const changePage = useCallback((action: PageAction) => { if (!isInteracting) dispatch({ type: 'page', action }); }, [isInteracting]);
   const commitStroke = useCallback((stroke: Stroke) =>
-    dispatch({ type: "document", documentId, action: { type: "commit", stroke } }), [documentId]);
-  const undo = useCallback(() => dispatch({ type: "document", documentId, action: { type: "undo" } }), [documentId]);
-  const redo = useCallback(() => dispatch({ type: "document", documentId, action: { type: "redo" } }), [documentId]);
-  const clearCanvas = useCallback(() => dispatch({ type: "document", documentId, action: { type: "clear" } }), [documentId]);
+    dispatch({ type: "document", documentId, pageId, action: { type: "commit", stroke } }), [documentId, pageId]);
+  const undo = useCallback(() => dispatch({ type: "document", documentId, pageId, action: { type: "undo" } }), [documentId, pageId]);
+  const redo = useCallback(() => dispatch({ type: "document", documentId, pageId, action: { type: "redo" } }), [documentId, pageId]);
+  const clearCanvas = useCallback(() => dispatch({ type: "document", documentId, pageId, action: { type: "clear" } }), [documentId, pageId]);
   const flushBeforeLeave = useCallback(async () => {
     await persistence.flush();
     return persistence.canLeave;
   }, [persistence]);
   const value = useMemo(() => ({
+    whiteboard: session.whiteboard, changePage,
     lesson: session.lesson, selectActivity, updateActivity,
     document: state.document, mode: session.mode, setMode, selectedTool, strokeColor, strokeWidth, eraserWidth, isInteracting,
     canUndo: state.past.length > 0, canRedo: state.future.length > 0,
     setSelectedTool, setStrokeColor, setStrokeWidth, setEraserWidth, setInteracting, flushBeforeLeave,
     commitStroke, undo, redo, clearCanvas, saveStatus, storageChecked, selection, setSelection, activatePersistence,
-  }), [state, session.mode, session.lesson, selectActivity, updateActivity, setMode, selectedTool, strokeColor, strokeWidth, eraserWidth, flushBeforeLeave, isInteracting, commitStroke, undo, redo, clearCanvas, saveStatus, storageChecked, selection, activatePersistence]);
+  }), [state, session.whiteboard, changePage, session.mode, session.lesson, selectActivity, updateActivity, setMode, selectedTool, strokeColor, strokeWidth, eraserWidth, flushBeforeLeave, isInteracting, commitStroke, undo, redo, clearCanvas, saveStatus, storageChecked, selection, activatePersistence]);
   return <DrawingContext.Provider value={value}>{children}</DrawingContext.Provider>;
 }
 export default function DrawingProvider({ children }: { children: ReactNode }) {

@@ -1,5 +1,6 @@
 import { z } from 'zod';
-import { documentSchema, sessionSchema, type SerializedDocument } from '../../contracts';
+import { documentSchema, documentV1Schema, migrateWhiteboard, sessionSchema, type SerializedV1 } from '../../contracts';
+import { boardPayload, type WhiteboardState } from '../drawing/whiteboard';
 import type { DrawingDocument, DocumentState } from '../drawing/document';
 import type { DrawingSession } from '../drawing/session';
 import { DEMO_SCENE_ID } from '../drawing/scene';
@@ -10,7 +11,7 @@ export const snapshotSchema = z.strictObject({
   mode: z.enum(['whiteboard', 'explore', 'annotate']),
   selection: z.enum(['circle', 'triangle', 'square']).nullable(),
   whiteboard: documentSchema,
-  annotations: z.record(z.string(), documentSchema),
+  annotations: z.record(z.string(), documentV1Schema),
   lesson: lessonSessionSchema.optional(),
 }).superRefine((snapshot, ctx) => {
   const docs = [snapshot.whiteboard, ...Object.values(snapshot.annotations)];
@@ -23,23 +24,25 @@ export const snapshotSchema = z.strictObject({
     ctx.addIssue({ code: 'custom', message: 'Invalid pinned lesson annotations' });
 });
 export type SessionSnapshot = z.infer<typeof snapshotSchema>;
-export function serializeDocument(document: DrawingDocument): SerializedDocument {
+export function serializeDocument(document: DrawingDocument): SerializedV1 {
   const { revision, ...rest } = document;
-  return documentSchema.parse({ ...rest, localRevision: revision });
+  return documentV1Schema.parse({ ...rest, localRevision: revision });
 }
 export function deserializeDocument(value: unknown): DocumentState {
-  const { localRevision, ...document } = documentSchema.parse(value);
+  const { localRevision, ...document } = documentV1Schema.parse(value);
   return { document: { ...document, revision: localRevision }, past: [], future: [] };
 }
 export function serializeSession(session: DrawingSession, identity: SessionSnapshot['identity'], selection: SessionSnapshot['selection']): SessionSnapshot {
   return snapshotSchema.parse({ schemaVersion: 1, identity, selection, mode: session.mode, ...(session.lesson ? { lesson: session.lesson } : {}),
-    whiteboard: serializeDocument(session.whiteboard.document),
+    whiteboard: boardPayload(session.whiteboard.document),
     annotations: Object.fromEntries(Object.entries(session.annotations).map(([key, state]) => [key, serializeDocument(state.document)])),
   });
 }
 export function deserializeSession(value: unknown): DrawingSession {
   const snapshot = snapshotSchema.parse(value);
-  return { mode: snapshot.mode, ...(snapshot.lesson ? { lesson: snapshot.lesson } : {}), whiteboard: deserializeDocument(snapshot.whiteboard),
+  const { localRevision, ...board } = migrateWhiteboard(snapshot.whiteboard);
+  const whiteboard: WhiteboardState = { document: { ...board, revision: localRevision }, histories: {} };
+  return { mode: snapshot.mode, ...(snapshot.lesson ? { lesson: snapshot.lesson } : {}), whiteboard,
     annotations: Object.fromEntries(Object.entries(snapshot.annotations).map(([key, document]) => [key, deserializeDocument(document)])),
   };
 }

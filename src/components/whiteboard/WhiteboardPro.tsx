@@ -7,6 +7,7 @@ import TeachingSurface from '../workspace/TeachingSurface';
 import DrawingToolbar from '../workspace/DrawingToolbar';
 import ConfirmDialog from '../common/ConfirmDialog';
 import './whiteboard-pro.css';
+import PageNavigator from './PageNavigator';
 
 export default function WhiteboardPro() {
   const { document, mode, setMode, selection, setSelection, saveStatus, isInteracting, flushBeforeLeave } = useDrawing();
@@ -69,7 +70,7 @@ export default function WhiteboardPro() {
       ? 'Your latest work may not be saved. Keep this board open and export a PNG before leaving. Undo history is not restored after reload.'
       : 'Work is saved on this device. Server synchronization needs attention; keep using this browser for recovery.'}</aside>}
     <TeachingSurface selection={selection} onSelect={setSelection} />
-    <footer className="wb-controls" aria-label="Whiteboard controls"><DrawingToolbar pro />
+    <footer className="wb-controls" aria-label="Whiteboard controls"><DrawingToolbar pro /><PageNavigator />
       {!focused && <span className="wb-footer-note">A clear space to think.</span>}</footer>
     {message && <div className="wb-message" role="alert">{message}<button className="workspace-button" aria-label="Dismiss export message" disabled={isInteracting} onClick={() => setMessage('')}>Close</button></div>}
     <dialog ref={dialog} className="wb-recent" aria-labelledby="recent-title" onCancel={event => { event.preventDefault(); setRecentOpen(false); }}>

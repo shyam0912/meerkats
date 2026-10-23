@@ -10,7 +10,7 @@ import { applyMigrations } from '../src/db/migrate.js';
 import { seedIdentity } from '../src/db/seed.js';
 import { parseEnv } from '../src/config/env.js';
 import { buildApp } from '../src/app.js';
-import type { SaveRequest } from '../../contracts/index.js';
+import { migrateWhiteboard, type SaveRequest, type SerializedV1 } from '../../contracts/index.js';
 import { memberships } from '../src/db/schema.js';
 import { eq } from 'drizzle-orm';
 import { seedCatalog, publishVersion } from '../src/modules/catalog.js';
@@ -25,7 +25,7 @@ let other: ReturnType<typeof buildApp>;
 let directory: string;
 const schoolId = randomUUID(); const userId = randomUUID();
 const identity = () => ({ id: randomUUID(), context: { classId: 'prototype:class:1', subjectId: 'prototype:subject:science', classLabel: 'STD 1', subjectLabel: 'Science' } });
-function saveBody(sessionId: string): SaveRequest {
+function saveBody(sessionId: string): Omit<SaveRequest, 'document'> & { document: SerializedV1 } {
   return { mutationId: randomUUID(), baseServerRevision: 0, document: { schemaVersion: 1, id: randomUUID(),
     owner: { sessionId, classId: 'prototype:class:1', subjectId: 'prototype:subject:science', target: { kind: 'whiteboard' } },
     localRevision: 1, bounds: { width: 1200, height: 675 }, objects: [{ id: randomUUID(), kind: 'ink', tool: 'pen', color: '#000000', width: 3, points: [20, 20] }],
@@ -66,6 +66,30 @@ afterAll(async () => {
 });
 
 describe('real PostgreSQL API', () => {
+  it('migrates a board, saves ordered pages and blocks downgrades without breaking exact v1 retries', async () => {
+    const body = saveBody((await create()).id); const original = (await put(body)).json();
+    const document = migrateWhiteboard(body.document);
+    document.pages.push({ id: randomUUID(), background: 'grid', objects: [] });
+    document.activePageId = document.pages[1]!.id;
+    const update = { mutationId: randomUUID(), baseServerRevision: 1, document };
+    expect((await put(update)).statusCode).toBe(200);
+    expect((await put(body)).json()).toEqual(original);
+    expect((await put({ ...body, mutationId: randomUUID(), baseServerRevision: 2 })).json()).toEqual({ error: 'document_version_downgrade' });
+    expect((await put({ ...update, mutationId: randomUUID() })).statusCode).toBe(409);
+    expect((await put({ ...update, mutationId: randomUUID(), baseServerRevision: 2 }, other)).statusCode).toBe(404);
+    expect((await app.inject(`/api/v1/sessions/${body.document.owner.sessionId}`)).json().documents[0]).toMatchObject({ serverRevision: 2, document });
+  });
+  it('rejects malformed v2 page identities, counts, backgrounds and annotation versions', async () => {
+    const body = saveBody((await create()).id); const document = migrateWhiteboard(body.document);
+    for (const invalid of [
+      { ...document, pages: [document.pages[0], document.pages[0]] },
+      { ...document, activePageId: randomUUID() },
+      { ...document, pages: Array.from({ length: 21 }, () => ({ ...document.pages[0], id: randomUUID() })) },
+      { ...document, pages: [{ ...document.pages[0], background: 'unknown' }] },
+      { ...document, owner: { ...document.owner, target: { kind: 'annotation', sceneId: 'neutral-shapes-v1' } } },
+    ]) expect((await app.inject({ method: 'PUT', url: `/api/v1/sessions/${body.document.owner.sessionId}/documents/${document.id}`, payload: { ...body, document: invalid } })).statusCode).toBe(400);
+    expect((await app.inject(`/api/v1/sessions/${body.document.owner.sessionId}`)).json().documents).toEqual([]);
+  });
   it('applies migrations repeatably and reports readiness', async () => {
     expect((await app.inject('/api/v1/ready')).statusCode).toBe(200);
     const result = await connection.pool.query("SELECT tablename FROM pg_tables WHERE schemaname = 'public'");

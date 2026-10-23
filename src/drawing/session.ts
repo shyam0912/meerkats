@@ -1,11 +1,12 @@
 import { createDocument, documentReducer, type DocumentOwner, type DocumentState, type DocumentAction } from "./document";
 import { DEMO_SCENE_ID } from "./scene";
+import { boardInkReducer, boardSurface, createWhiteboard, pageReducer, type PageAction, type WhiteboardState } from './whiteboard';
 import { annotationKey, initialProgress, validProgress, type LessonVersion, type LessonSession, type ActivityState } from '../../contracts/lesson';
 
 export type TeachingMode = "whiteboard" | "explore" | "annotate";
 export interface DrawingSession {
   mode: TeachingMode;
-  whiteboard: DocumentState;
+  whiteboard: WhiteboardState;
   annotations: Record<string, DocumentState>;
   lesson?: LessonSession;
 }
@@ -13,12 +14,13 @@ export type SessionAction =
   | { type: "mode"; mode: TeachingMode }
   | { type: "activity"; id: string }
   | { type: "activity-state"; id: string; state: ActivityState }
-  | { type: "document"; documentId: string; action: DocumentAction };
+  | { type: 'page'; action: PageAction }
+  | { type: "document"; documentId: string; pageId?: string; action: DocumentAction };
 
 export function createDrawingSession(owner: DocumentOwner, ids: { whiteboard: string; annotation: string }): DrawingSession {
   return {
     mode: "whiteboard",
-    whiteboard: createDocument({ ...owner, target: { kind: "whiteboard" } }, ids.whiteboard),
+    whiteboard: createWhiteboard(owner, ids.whiteboard),
     annotations: { [DEMO_SCENE_ID]: createDocument({
       ...owner, target: { kind: "annotation", sceneId: DEMO_SCENE_ID },
     }, ids.annotation) },
@@ -27,11 +29,12 @@ export function createDrawingSession(owner: DocumentOwner, ids: { whiteboard: st
 export function activeDocument(session: DrawingSession): DocumentState {
   const activity = session.lesson?.version.activities.find(a => a.id === session.lesson?.progress.currentActivityId);
   const key = activity && session.lesson ? annotationKey({ lessonVersionId: session.lesson.version.id, activityId: activity.id, sceneId: activity.sceneId }) : DEMO_SCENE_ID;
-  const document = session.mode === "whiteboard" ? session.whiteboard : session.annotations[key];
+  const document = session.mode === "whiteboard" ? boardSurface(session.whiteboard) : session.annotations[key];
   if (!document) throw new Error("The teaching scene has no annotation document");
   return document;
 }
 export function sessionReducer(session: DrawingSession, action: SessionAction): DrawingSession {
+  if (action.type === 'page') return { ...session, whiteboard: pageReducer(session.whiteboard, action.action) };
   if (action.type === "mode") return { ...session, mode: action.mode };
   if (action.type === 'activity' || action.type === 'activity-state') {
     const lesson = session.lesson;
@@ -43,7 +46,7 @@ export function sessionReducer(session: DrawingSession, action: SessionAction): 
   }
   // Explicit document IDs prevent stale callbacks from writing into the newly selected document.
   if (session.whiteboard.document.id === action.documentId) {
-    return { ...session, whiteboard: documentReducer(session.whiteboard, action.action) };
+    return { ...session, whiteboard: boardInkReducer(session.whiteboard, action.pageId ?? session.whiteboard.document.activePageId, action.action) };
   }
   const entry = Object.entries(session.annotations).find(([, state]) => state.document.id === action.documentId);
   if (!entry) return session;
@@ -51,7 +54,7 @@ export function sessionReducer(session: DrawingSession, action: SessionAction): 
 }
 
 export function createLessonSession(owner: DocumentOwner, version: LessonVersion): DrawingSession {
-  return { mode: 'explore', whiteboard: createDocument({ ...owner, target: { kind: 'whiteboard' } }, crypto.randomUUID()),
+  return { mode: 'explore', whiteboard: createWhiteboard(owner, crypto.randomUUID()),
     lesson: { version, progress: initialProgress(version) },
     annotations: Object.fromEntries(version.activities.map(activity => {
       const target = { kind: 'annotation' as const, sceneId: activity.sceneId, activityId: activity.id, lessonVersionId: version.id };

@@ -28,18 +28,18 @@ describe("session document ownership", () => {
     state = sessionReducer(state, { type: "mode", mode: "whiteboard" });
     state = act(state, "undo");
     state = add(state, "board-b");
-    expect(state.whiteboard.future).toEqual([]);
+    expect(activeDocument(state).future).toEqual([]);
     state = sessionReducer(state, { type: "mode", mode: "explore" });
     expect(activeDocument(state).future).toHaveLength(1);
     state = act(state, "redo");
     expect(activeDocument(state).document.objects).toEqual([]);
-    expect(state.whiteboard.document.objects.map(x => x.id)).toEqual(["board-b"]);
+    expect(state.whiteboard.document.pages[0]!.objects.map(x => x.id)).toEqual(["board-b"]);
   });
   it("routes an explicitly addressed completion to its original document and rejects unknown IDs", () => {
     let state = fresh();
     state = sessionReducer(state, { type: "mode", mode: "annotate" });
     state = sessionReducer(state, { type: "document", documentId: "board", action: { type: "commit", stroke: ink("late") } });
-    expect(state.whiteboard.document.objects).toHaveLength(1);
+    expect(state.whiteboard.document.pages[0]!.objects).toHaveLength(1);
     expect(activeDocument(state).document.objects).toHaveLength(0);
     expect(sessionReducer(state, { type: "document", documentId: "old-session-document", action: { type: "clear" } })).toBe(state);
   });
@@ -47,7 +47,7 @@ describe("session document ownership", () => {
     let old = add(fresh(), "board");
     old = add(sessionReducer(old, { type: "mode", mode: "annotate" }), "annotation");
     const next = createDrawingSession({ ...owner, sessionId: "new" }, { whiteboard: "new-board", annotation: "new-annotation" });
-    expect(next.whiteboard.document.objects).toEqual([]);
+    expect(next.whiteboard.document.pages[0]!.objects).toEqual([]);
     expect(next.annotations[DEMO_SCENE_ID]?.past).toEqual([]);
     expect(old.annotations[DEMO_SCENE_ID]?.document.objects).toHaveLength(1);
   });

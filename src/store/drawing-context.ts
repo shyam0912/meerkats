@@ -5,6 +5,8 @@ import type { TeachingMode } from "../drawing/session";
 import type { LessonSession, ActivityState } from '../../contracts/lesson';
 
 export interface DrawingContextType {
+  whiteboard: import('../drawing/whiteboard').WhiteboardState;
+  changePage: (action: import('../drawing/whiteboard').PageAction) => void;
   lesson?: LessonSession;
   selectActivity: (id: string) => void;
   updateActivity: (id: string, state: ActivityState) => void;

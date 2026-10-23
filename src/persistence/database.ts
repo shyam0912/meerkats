@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { saveRequestSchema } from '../../contracts';
+import { migrateWhiteboard, saveRequestSchema } from '../../contracts';
 import { snapshotSchema, type SessionSnapshot } from './serialization';
 import { progressSaveSchema } from '../../contracts/lesson';
 
@@ -34,8 +34,13 @@ export class SessionRepository {
   constructor(name = 'meerkats-teaching-v1') { this.name = name; }
   private open(): Promise<IDBDatabase> {
     return new Promise((resolve, reject) => {
-      const request = indexedDB.open(this.name, 1);
-      request.onupgradeneeded = () => { request.result.createObjectStore('sessions'); };
+      // Old clients explicitly open v1 and now fail with VersionError rather than
+      // flattening a v2 board. Existing connections close on versionchange.
+      const request = indexedDB.open(this.name, 2);
+      request.onupgradeneeded = () => {
+        if (!request.result.objectStoreNames.contains('sessions')) request.result.createObjectStore('sessions');
+        if (!request.result.objectStoreNames.contains('migrationBackups')) request.result.createObjectStore('migrationBackups');
+      };
       request.onsuccess = () => { const db = request.result; db.onversionchange = () => db.close(); resolve(db); };
       request.onerror = () => reject(request.error);
       request.onblocked = () => reject(new Error('Device storage upgrade blocked by another tab'));
@@ -51,6 +56,12 @@ export class SessionRepository {
       if (value === undefined) return undefined;
       const record = localRecordSchema.parse(value);
       if (record.snapshot.identity.id !== id) throw new Error('Stored session identity mismatch');
+      if (record.snapshot.whiteboard.schemaVersion === 1) {
+        const migrated = { ...record, snapshot: { ...record.snapshot, whiteboard: migrateWhiteboard(record.snapshot.whiteboard) } };
+        // save() atomically stores the untouched original alongside the migrated
+        // snapshot. The original pending payloads and mutation IDs are retained.
+        return await this.save(migrated);
+      }
       return record;
     } finally { db.close(); }
   }
@@ -70,7 +81,8 @@ export class SessionRepository {
             const { snapshot, savedAt } = parsed.data;
             if (!snapshot.lesson && snapshot.identity.context.classId === null && snapshot.identity.context.subjectId === null &&
                 !snapshot.identity.context.classLabel && !snapshot.identity.context.subjectLabel) {
-              boards.push({ id: snapshot.identity.id, savedAt, inkCount: snapshot.whiteboard.objects.length });
+              const board = snapshot.whiteboard;
+              boards.push({ id: snapshot.identity.id, savedAt, inkCount: board.schemaVersion === 1 ? board.objects.length : board.pages.reduce((n, p) => n + p.objects.length, 0) });
               boards.sort((a, b) => b.savedAt.localeCompare(a.savedAt) || a.id.localeCompare(b.id));
               boards.splice(Math.max(0, limit));
             }
@@ -88,17 +100,36 @@ export class SessionRepository {
     const db = await this.open();
     try {
       await new Promise<void>((resolve, reject) => {
-        const tx = db.transaction('sessions', 'readwrite'); const store = tx.objectStore('sessions');
+        const tx = db.transaction(['sessions', 'migrationBackups'], 'readwrite'); const store = tx.objectStore('sessions');
         let conflict = false;
         const read = store.get(parsed.snapshot.identity.id);
         read.onsuccess = () => {
           const prior = read.result as LocalRecord | undefined;
+          if (prior && !localRecordSchema.safeParse(prior).success) { conflict = true; tx.abort(); return; }
           if ((prior?.generation ?? 0) !== parsed.generation) { conflict = true; tx.abort(); return; }
-          store.put(next, parsed.snapshot.identity.id);
+          if (prior && prior.snapshot.whiteboard.schemaVersion > next.snapshot.whiteboard.schemaVersion) { conflict = true; tx.abort(); return; }
+          if (prior?.snapshot.whiteboard.schemaVersion === 1 && next.snapshot.whiteboard.schemaVersion === 2) {
+            const backups = tx.objectStore('migrationBackups'); const backup = backups.get(parsed.snapshot.identity.id);
+            backup.onsuccess = () => { try { if (backup.result === undefined) backups.put(prior, parsed.snapshot.identity.id); } catch { tx.abort(); } };
+          }
+          try { store.put(next, parsed.snapshot.identity.id); } catch { tx.abort(); }
         };
         tx.oncomplete = () => resolve(); tx.onabort = () => reject(conflict ? new LocalConflict() : tx.error ?? new Error('Device save failed'));
       });
       return next;
+    } finally { db.close(); }
+  }
+  async migrationBackup(id: string): Promise<LocalRecord | undefined> {
+    const db = await this.open();
+    try {
+      return await new Promise((resolve, reject) => {
+        const tx = db.transaction('migrationBackups', 'readonly'); const request = tx.objectStore('migrationBackups').get(id);
+        tx.oncomplete = () => {
+          try { resolve(request.result === undefined ? undefined : localRecordSchema.parse(request.result)); }
+          catch (error) { reject(error); }
+        };
+        tx.onabort = () => reject(tx.error);
+      });
     } finally { db.close(); }
   }
 }

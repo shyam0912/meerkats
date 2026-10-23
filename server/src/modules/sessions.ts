@@ -88,6 +88,9 @@ export function sessionService(db: Database, identity: Config) {
           return { documentId, mutationId: input.mutationId, serverRevision: receipt.serverRevision, contentHash: receipt.contentHash, durable: true as const };
         }
         if ((existing?.serverRevision ?? 0) !== input.baseServerRevision) throw new ApiError(409, 'stale_revision');
+        // Exact historical retries above remain idempotent, but a new old-client write
+        // must never flatten a multi-page document, even with a current revision.
+        if (existing && existing.snapshot.schemaVersion > doc.schemaVersion) throw new ApiError(409, 'document_version_downgrade');
         if (doc.owner.target.kind === 'annotation' && session.lessonVersionId) {
           const [row] = await tx.select().from(lessonVersions).where(eq(lessonVersions.id, session.lessonVersionId));
           const target = doc.owner.target;

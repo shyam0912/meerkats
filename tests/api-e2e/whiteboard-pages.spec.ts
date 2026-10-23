@@ -1,0 +1,25 @@
+import { test, expect } from '@playwright/test';
+import { sessionResponseSchema } from '../../contracts';
+test('v2 page order, deleted pages, backgrounds and ink recover from API in a fresh browser', async ({ page, browser }) => {
+  await page.goto('/'); await page.getByRole('button', { name: 'Whiteboard', exact: true }).click();
+  const surface = page.getByRole('region', { name: 'Whiteboard drawing surface' });
+  const b = (await surface.boundingBox())!; await page.mouse.click(b.x + b.width / 2, b.y + b.height / 2);
+  const first = await surface.getAttribute('data-page-id');
+  await page.getByRole('button', { name: /^Pages ·/ }).click(); await page.getByRole('button', { name: 'Add page', exact: true }).click();
+  await page.getByRole('button', { name: 'Square grid', exact: true }).click(); await page.getByRole('button', { name: 'Delete page 1', exact: true }).click();
+  await page.getByRole('button', { name: 'Delete page', exact: true }).click(); await page.getByRole('button', { name: 'Close pages' }).click();
+  await expect(page.getByRole('status')).toHaveText('Ink synced · Context saved on device', { timeout: 20000 });
+  const url = page.url(); const id = new URL(url).searchParams.get('session');
+  const response = sessionResponseSchema.parse(await (await page.request.get(`/api/v1/sessions/${id}`)).json());
+  const board = response.documents.find(d => d.document.owner.target.kind === 'whiteboard')!.document;
+  expect(board.schemaVersion).toBe(2); if (board.schemaVersion !== 2) throw new Error('Expected v2');
+  expect(board.pages).toHaveLength(1); expect(board.pages[0]!.background).toBe('grid');
+  expect(board.deletedPages[0]!.id).toBe(first); expect(board.deletedPages[0]!.objects).toHaveLength(1);
+  const context = await browser.newContext(); const recovered = await context.newPage(); await recovered.goto(url);
+  const recoveredSurface = recovered.getByRole('region', { name: 'Whiteboard drawing surface' });
+  await expect(recoveredSurface).toHaveAttribute('data-background', 'grid');
+  await recovered.getByRole('button', { name: /^Pages ·/ }).click(); await recovered.getByRole('button', { name: 'Restore deleted page 1', exact: true }).click();
+  await recovered.getByRole('button', { name: 'Close pages' }).click();
+  await expect(recoveredSurface).toHaveAttribute('data-page-id', first!); await expect(recoveredSurface).toHaveAttribute('data-ink-count', '1');
+  await context.close();
+});

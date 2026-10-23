@@ -54,7 +54,7 @@ export default function DrawingToolbar({ pro = false }: { pro?: boolean }) {
       <p>{strokeWidth} units pen · {eraserWidth} units eraser. Sizes are independent and scale with the board.</p>
       <p>The eraser removes ink only.</p>
     </dialog>
-    <ConfirmDialog open={confirmClear} title={document.owner.target?.kind === "annotation" ? "Clear these annotations?" : "Clear this board?"}
+    <ConfirmDialog open={confirmClear} title={document.owner.target?.kind === "annotation" ? "Clear these annotations?" : document.pageId ? "Clear this page?" : "Clear this board?"}
       message="Only ink on this surface will be cleared. Undo can restore it until you reload or leave this session."
       confirmText="Clear ink" onCancel={() => setConfirmClear(false)}
       onConfirm={() => { clearCanvas(); setConfirmClear(false); }} />

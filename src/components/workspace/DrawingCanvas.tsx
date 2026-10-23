@@ -5,6 +5,7 @@ import useDrawing from "../../store/useDrawing";
 import { ToolManager } from "../../drawing/ToolManager";
 import { scenePoint } from "../../drawing/scene";
 import AnnotationLayer from "../layers/AnnotationLayer";
+import PageBackground from '../whiteboard/PageBackground';
 
 export default function DrawingCanvas({ enabled = true, transparent = false }: { enabled?: boolean; transparent?: boolean }) {
   const containerRef = useRef<HTMLDivElement>(null);
@@ -16,7 +17,7 @@ export default function DrawingCanvas({ enabled = true, transparent = false }: {
   const [inputError, setInputError] = useState("");
   const {
     document, selectedTool, strokeColor, strokeWidth, eraserWidth,
-    commitStroke, setInteracting,
+    commitStroke, setInteracting, whiteboard, changePage,
   } = useDrawing();
 
   const paintDraft = useCallback(() => {
@@ -124,6 +125,7 @@ export default function DrawingCanvas({ enabled = true, transparent = false }: {
   return (
     <div ref={containerRef} role="region" aria-label={transparent ? "Content annotation surface" : "Whiteboard drawing surface"} tabIndex={enabled ? 0 : -1}
       data-document-id={document.id} data-session-id={document.owner.sessionId}
+      data-page-id={document.pageId} data-background={document.background}
       data-ink-count={document.objects.length} data-revision={document.revision}
       data-input-owner={enabled ? "ink" : "content"}
       className="absolute inset-0 overflow-hidden outline-none focus-visible:ring-2 focus-visible:ring-teal-600"
@@ -132,6 +134,7 @@ export default function DrawingCanvas({ enabled = true, transparent = false }: {
       onPointerCancel={(event) => { if (manager.pointerId === event.pointerId) cancelInteraction(); }}
       onLostPointerCapture={(event) => { if (manager.pointerId === event.pointerId) cancelInteraction(); }}
       onKeyDown={(event) => { if (event.key === "Escape") cancelInteraction(); }}>
+      {!transparent && <PageBackground background={document.background} />}
       <Stage width={size.width} height={size.height} className="absolute inset-0" listening={false}>
         <Layer listening={false} scaleX={size.width / document.bounds.width} scaleY={size.height / document.bounds.height}>
           <AnnotationLayer objects={document.objects} />
@@ -141,6 +144,9 @@ export default function DrawingCanvas({ enabled = true, transparent = false }: {
         </Layer>
       </Stage>
       {inputError && <p role="alert" className="absolute bottom-4 left-4 bg-white p-3 text-red-700">{inputError}</p>}
+      {!transparent && whiteboard.error && <div role="alert" className="wb-capacity" onPointerDown={event => event.stopPropagation()}>
+        <span>{whiteboard.error}</span><button className="workspace-button" disabled={manager.pointerId !== null} onClick={() => changePage({ type: 'dismiss-error' })}>Dismiss</button>
+      </div>}
     </div>
   );
 }

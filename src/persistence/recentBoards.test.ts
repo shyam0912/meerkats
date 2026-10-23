@@ -24,7 +24,7 @@ describe('recent standalone boards', () => {
   });
   it('leaves malformed records untouched and reports their count', async () => {
     const name = crypto.randomUUID(); const repo = new SessionRepository(name); await repo.save(newRecord(snapshot()));
-    const db = await new Promise<IDBDatabase>(resolve => { const req = indexedDB.open(name, 1); req.onsuccess = () => resolve(req.result); });
+    const db = await new Promise<IDBDatabase>(resolve => { const req = indexedDB.open(name, 2); req.onsuccess = () => resolve(req.result); });
     await new Promise<void>(resolve => { const tx = db.transaction('sessions', 'readwrite'); tx.objectStore('sessions').put({ schemaVersion: 99 }, 'unsupported'); tx.oncomplete = () => resolve(); });
     expect(await repo.recentBoards()).toMatchObject({ unavailable: 1 });
     const count = await new Promise<number>(resolve => { const req = db.transaction('sessions').objectStore('sessions').count(); req.onsuccess = () => resolve(req.result); });

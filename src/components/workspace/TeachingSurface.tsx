@@ -34,7 +34,7 @@ export default function TeachingSurface({ selection, onSelect }: {
           {activity && lesson ? <ActivityHost activity={activity} state={lesson.progress.states[activity.id]!} onChange={state => updateActivity(activity.id, state)} />
             : <NeutralScene selection={selection} onSelect={onSelect} />}
         </div>}
-        <DrawingCanvas key={document.id} enabled={mode !== "explore"} transparent={isContent} />
+        <DrawingCanvas key={document.id + ':' + (document.pageId ?? '')} enabled={mode !== "explore"} transparent={isContent} />
       </div>}
     </div>
   </main>;

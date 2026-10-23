@@ -23,6 +23,7 @@ export class PersistenceController {
   private onStorageChecked?: () => void;
   // Navigation may proceed after local durability; network acknowledgement is independent.
   get canLeave() { return this.latest === this.durableSnapshot && !this.localFailure && !this.invalidDocument; }
+  get hasUnsavedChanges() { return this.hasUpdates && !this.canLeave; }
   constructor(snapshot: SessionSnapshot, notify: (status: string) => void,
     repository = new SessionRepository(), remote?: SessionApi, restored?: LocalRecord, onStorageChecked?: () => void) {
     this.notify = notify; this.repository = repository; this.remote = remote;
@@ -74,7 +75,7 @@ export class PersistenceController {
         this.notify(this.latest === this.durableSnapshot ? syncedMessage : 'Saving on device');
         return;
       }
-      this.notify('Saved on this device · Syncing ink');
+      this.notify(this.latest === this.durableSnapshot ? 'Saved on this device · Syncing ink' : 'Saving on device');
       await this.remote.create(this.record.snapshot.identity);
       for (;;) {
         if (this.stopped || this.localFailure) break;

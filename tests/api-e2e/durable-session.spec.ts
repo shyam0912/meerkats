@@ -15,7 +15,7 @@ test('real API acknowledgement, retrieval and rendering in an empty browser stor
   const response = await page.request.get(`/api/v1/sessions/${id}`); expect(response.ok()).toBe(true);
   const remote = sessionResponseSchema.parse(await response.json());
   expect(remote.documents).toHaveLength(2);
-  expect(remote.documents.every(d => d.serverRevision > 0 && d.document.objects.length === 1)).toBe(true);
+  expect(remote.documents.every(d => d.serverRevision > 0 && (d.document.schemaVersion === 1 ? d.document.objects : d.document.pages[0]!.objects).length === 1)).toBe(true);
   const freshContext = await browser.newContext(); const recovered = await freshContext.newPage();
   await recovered.goto(url);
   await expect(surface(recovered)).toHaveAttribute('data-ink-count', '1');
