@@ -20,7 +20,7 @@ async function seedV1(name: string, record: LocalRecord) {
   db.close();
 }
 async function raw(name: string, store: string, id: string) {
-  const db = await new Promise<IDBDatabase>(resolve => { const req = indexedDB.open(name, 2); req.onsuccess = () => resolve(req.result); });
+  const db = await new Promise<IDBDatabase>(resolve => { const req = indexedDB.open(name, 3); req.onsuccess = () => resolve(req.result); });
   try { return await new Promise<unknown>(resolve => { const req = db.transaction(store).objectStore(store).get(id); req.onsuccess = () => resolve(req.result); }); } finally { db.close(); }
 }
 describe('v1 migration and recovery protection', () => {

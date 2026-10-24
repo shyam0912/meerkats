@@ -10,7 +10,7 @@ import { deserializeSession, serializeSession, type SessionSnapshot } from "../p
 import { PersistenceController } from "../persistence/controller";
 import { api } from "../persistence/api";
 import type { LocalRecord } from "../persistence/database";
-import type { SessionIdentity } from "../../contracts";
+import type { SessionIdentity, TeachingShape, TeachingShapeType } from "../../contracts";
 import type { PageAction } from '../drawing/whiteboard';
 
 function SessionDrawingProvider({ children, owner, identity, restored, lessonVersion }: {
@@ -23,7 +23,10 @@ function SessionDrawingProvider({ children, owner, identity, restored, lessonVer
   const state = activeDocument(session);
   const documentId = state.document.id;
   const pageId = state.document.pageId;
-  const [selectedTool, setSelectedTool] = useState<DrawingTool>("pen");
+  const [selectedTool, setSelectedTool] = useState<DrawingTool | 'shape'>("pen");
+  const [shapeType, setShapeType] = useState<TeachingShapeType>('line');
+  const [shapeColor, setShapeColor] = useState('#214f45');
+  const [shapeWidth, setShapeWidth] = useState(4);
   const [strokeColor, setStrokeColor] = useState("#000000");
   const [strokeWidth, setStrokeWidth] = useState(3);
   const [eraserWidth, setEraserWidth] = useState(18);
@@ -71,6 +74,8 @@ function SessionDrawingProvider({ children, owner, identity, restored, lessonVer
   const changePage = useCallback((action: PageAction) => { if (!isInteracting) dispatch({ type: 'page', action }); }, [isInteracting]);
   const commitStroke = useCallback((stroke: Stroke) =>
     dispatch({ type: "document", documentId, pageId, action: { type: "commit", stroke } }), [documentId, pageId]);
+  const commitShape = useCallback((shape: TeachingShape) =>
+    dispatch({ type: 'document', documentId, pageId, action: { type: 'commit-shape', shape } }), [documentId, pageId]);
   const undo = useCallback(() => dispatch({ type: "document", documentId, pageId, action: { type: "undo" } }), [documentId, pageId]);
   const redo = useCallback(() => dispatch({ type: "document", documentId, pageId, action: { type: "redo" } }), [documentId, pageId]);
   const clearCanvas = useCallback(() => dispatch({ type: "document", documentId, pageId, action: { type: "clear" } }), [documentId, pageId]);
@@ -79,13 +84,14 @@ function SessionDrawingProvider({ children, owner, identity, restored, lessonVer
     return persistence.canLeave;
   }, [persistence]);
   const value = useMemo(() => ({
+    shapeType, shapeColor, shapeWidth, setShapeType, setShapeColor, setShapeWidth, commitShape,
     whiteboard: session.whiteboard, changePage,
     lesson: session.lesson, selectActivity, updateActivity,
     document: state.document, mode: session.mode, setMode, selectedTool, strokeColor, strokeWidth, eraserWidth, isInteracting,
     canUndo: state.past.length > 0, canRedo: state.future.length > 0,
     setSelectedTool, setStrokeColor, setStrokeWidth, setEraserWidth, setInteracting, flushBeforeLeave,
     commitStroke, undo, redo, clearCanvas, saveStatus, storageChecked, selection, setSelection, activatePersistence,
-  }), [state, session.whiteboard, changePage, session.mode, session.lesson, selectActivity, updateActivity, setMode, selectedTool, strokeColor, strokeWidth, eraserWidth, flushBeforeLeave, isInteracting, commitStroke, undo, redo, clearCanvas, saveStatus, storageChecked, selection, activatePersistence]);
+  }), [shapeType, shapeColor, shapeWidth, commitShape, state, session.whiteboard, changePage, session.mode, session.lesson, selectActivity, updateActivity, setMode, selectedTool, strokeColor, strokeWidth, eraserWidth, flushBeforeLeave, isInteracting, commitStroke, undo, redo, clearCanvas, saveStatus, storageChecked, selection, activatePersistence]);
   return <DrawingContext.Provider value={value}>{children}</DrawingContext.Provider>;
 }
 export default function DrawingProvider({ children }: { children: ReactNode }) {

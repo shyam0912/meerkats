@@ -34,9 +34,9 @@ export class SessionRepository {
   constructor(name = 'meerkats-teaching-v1') { this.name = name; }
   private open(): Promise<IDBDatabase> {
     return new Promise((resolve, reject) => {
-      // Old clients explicitly open v1 and now fail with VersionError rather than
-      // flattening a v2 board. Existing connections close on versionchange.
-      const request = indexedDB.open(this.name, 2);
+      // Old clients explicitly open v1/v2 and now fail with VersionError rather than
+      // flattening a v3 board. Existing connections close on versionchange.
+      const request = indexedDB.open(this.name, 3);
       request.onupgradeneeded = () => {
         if (!request.result.objectStoreNames.contains('sessions')) request.result.createObjectStore('sessions');
         if (!request.result.objectStoreNames.contains('migrationBackups')) request.result.createObjectStore('migrationBackups');
@@ -82,7 +82,7 @@ export class SessionRepository {
             if (!snapshot.lesson && snapshot.identity.context.classId === null && snapshot.identity.context.subjectId === null &&
                 !snapshot.identity.context.classLabel && !snapshot.identity.context.subjectLabel) {
               const board = snapshot.whiteboard;
-              boards.push({ id: snapshot.identity.id, savedAt, inkCount: board.schemaVersion === 1 ? board.objects.length : board.pages.reduce((n, p) => n + p.objects.length, 0) });
+              boards.push({ id: snapshot.identity.id, savedAt, inkCount: board.schemaVersion === 1 ? board.objects.length : board.pages.reduce((n, p) => n + p.objects.length + ('shapes' in p ? p.shapes.length : 0), 0) });
               boards.sort((a, b) => b.savedAt.localeCompare(a.savedAt) || a.id.localeCompare(b.id));
               boards.splice(Math.max(0, limit));
             }

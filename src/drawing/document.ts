@@ -1,5 +1,6 @@
 import type { Stroke } from "../types/drawing";
 import { SCENE_BOUNDS, type SceneBounds } from "./scene";
+import { teachingShapeSchema, type TeachingShape } from '../../contracts';
 
 export interface DocumentOwner {
   sessionId: string;
@@ -17,9 +18,11 @@ export interface DrawingDocument {
   revision: number;
   bounds: SceneBounds;
   objects: readonly Stroke[];
+  shapes?: readonly TeachingShape[];
 }
 export type DrawingOperation =
   | { type: "add-ink"; object: Stroke }
+  | { type: 'add-shape'; object: TeachingShape }
   | { type: "clear-ink"; removed: readonly Stroke[] };
 export interface DocumentState {
   document: DrawingDocument;
@@ -28,6 +31,7 @@ export interface DocumentState {
 }
 export type DocumentAction =
   | { type: "commit"; stroke: Stroke }
+  | { type: 'commit-shape'; shape: TeachingShape }
   | { type: "clear" }
   | { type: "undo" }
   | { type: "redo" };
@@ -41,6 +45,7 @@ export function createDocument(owner: DocumentOwner, id: string): DocumentState 
   };
 }
 function apply(objects: readonly Stroke[], operation: DrawingOperation, reverse = false) {
+  if (operation.type === 'add-shape') return objects;
   if (operation.type === "clear-ink") return reverse ? operation.removed : [];
   return reverse ? objects.filter((object) => object.id !== operation.object.id)
     : [...objects, operation.object];
@@ -66,11 +71,15 @@ export function documentReducer(state: DocumentState, action: DocumentAction): D
     if (action.type === "clear") {
       if (state.document.objects.length === 0) return state;
       operation = { type: "clear-ink", removed: state.document.objects };
+    } else if (action.type === 'commit-shape') {
+      if (!state.document.pageId || !teachingShapeSchema.safeParse(action.shape).success ||
+          [...state.document.objects, ...(state.document.shapes ?? [])].some(o => o.id === action.shape.id)) return state;
+      operation = { type: 'add-shape', object: teachingShapeSchema.parse(action.shape) };
     } else {
       const stroke = action.stroke;
       if (stroke.points.length < 2 || stroke.points.length % 2 !== 0 ||
           !stroke.points.every(Number.isFinite) || !Number.isFinite(stroke.width) ||
-          stroke.width <= 0 || state.document.objects.some((object) => object.id === stroke.id)) return state;
+          stroke.width <= 0 || [...state.document.objects, ...(state.document.shapes ?? [])].some((object) => object.id === stroke.id)) return state;
       // History never owns the mutable input buffer.
       operation = { type: "add-ink", object: { ...stroke, points: [...stroke.points] } };
     }
@@ -78,8 +87,11 @@ export function documentReducer(state: DocumentState, action: DocumentAction): D
     past = [...past, operation].slice(-HISTORY_LIMIT);
     future = [];
   }
+  const shapes = operation.type === 'add-shape' ? action.type === 'undo'
+    ? (state.document.shapes ?? []).filter(s => s.id !== operation.object.id)
+    : [...(state.document.shapes ?? []), operation.object] : state.document.shapes;
   return {
-    document: { ...state.document, objects, revision: state.document.revision + 1 },
+    document: { ...state.document, ...(shapes ? { shapes } : {}), objects, revision: state.document.revision + 1 },
     past, future,
   };
 }

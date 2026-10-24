@@ -30,7 +30,7 @@ for (const bytes of [2096000, 2097152]) test(`capacity ${bytes} bytes rejects ex
   await page.goto('/');
   await page.evaluate(async record => {
     const db = await new Promise<IDBDatabase>((resolve, reject) => {
-      const r = indexedDB.open('meerkats-teaching-v1', 2);
+      const r = indexedDB.open('meerkats-teaching-v1', 3);
       r.onupgradeneeded = () => { r.result.createObjectStore('sessions'); r.result.createObjectStore('migrationBackups'); };
       r.onsuccess = () => resolve(r.result); r.onerror = () => reject(r.error);
     });
@@ -52,7 +52,7 @@ for (const bytes of [2096000, 2097152]) test(`capacity ${bytes} bytes rejects ex
   await page.screenshot({ path: test.info().outputPath(`capacity-${bytes}.png`) });
   await page.reload(); await expect(surface).toHaveAttribute('data-ink-count', '1');
   const recovered = await page.evaluate(async id => {
-    const db = await new Promise<IDBDatabase>(resolve => { const r = indexedDB.open('meerkats-teaching-v1', 2); r.onsuccess = () => resolve(r.result); });
+    const db = await new Promise<IDBDatabase>(resolve => { const r = indexedDB.open('meerkats-teaching-v1', 3); r.onsuccess = () => resolve(r.result); });
     const result = await new Promise<unknown>(resolve => { const r = db.transaction('sessions').objectStore('sessions').get(id); r.onsuccess = () => resolve(r.result.snapshot.whiteboard); });
     db.close(); return result;
   }, record.snapshot.identity.id);

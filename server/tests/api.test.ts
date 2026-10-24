@@ -10,7 +10,7 @@ import { applyMigrations } from '../src/db/migrate.js';
 import { seedIdentity } from '../src/db/seed.js';
 import { parseEnv } from '../src/config/env.js';
 import { buildApp } from '../src/app.js';
-import { migrateWhiteboard, type SaveRequest, type SerializedV1 } from '../../contracts/index.js';
+import { migrateWhiteboard, whiteboardV3Schema, type SaveRequest, type SerializedV1 } from '../../contracts/index.js';
 import { memberships } from '../src/db/schema.js';
 import { eq } from 'drizzle-orm';
 import { seedCatalog, publishVersion } from '../src/modules/catalog.js';
@@ -66,6 +66,22 @@ afterAll(async () => {
 });
 
 describe('real PostgreSQL API', () => {
+  it('saves v3 geometry, preserves exact v2 retries and rejects downgrade or malformed shapes', async () => {
+    const legacy = saveBody((await create()).id);
+    const v2 = { ...legacy, document: migrateWhiteboard(legacy.document) };
+    const receipt = (await put(v2)).json();
+    const document = whiteboardV3Schema.parse({ ...v2.document, schemaVersion: 3, localRevision: 3,
+      pages: v2.document.pages.map(p => ({ ...p, shapes: [{ id: randomUUID(), kind: 'shape', shape: 'circle', center: { x: 200, y: 200 }, radius: 60, color: '#000000', width: 4 }] })), deletedPages: [] });
+    const request = { mutationId: randomUUID(), baseServerRevision: 1, document };
+    expect((await put(request)).statusCode).toBe(200);
+    expect((await put(v2)).json()).toEqual(receipt);
+    expect((await put({ ...v2, mutationId: randomUUID(), baseServerRevision: 2 })).json()).toEqual({ error: 'document_version_downgrade' });
+    expect((await put({ ...request, mutationId: randomUUID() })).statusCode).toBe(409);
+    expect((await put(request, other)).statusCode).toBe(404);
+    const invalid = { ...request, mutationId: randomUUID(), baseServerRevision: 2, document: { ...document, pages: [{ ...document.pages[0], shapes: [{ ...document.pages[0]!.shapes[0], radius: -1 }] }] } };
+    expect((await app.inject({ method: 'PUT', url: `/api/v1/sessions/${legacy.document.owner.sessionId}/documents/${document.id}`, payload: invalid })).statusCode).toBe(400);
+    expect((await app.inject(`/api/v1/sessions/${legacy.document.owner.sessionId}`)).json().documents[0].document).toEqual(document);
+  });
   it('migrates a board, saves ordered pages and blocks downgrades without breaking exact v1 retries', async () => {
     const body = saveBody((await create()).id); const original = (await put(body)).json();
     const document = migrateWhiteboard(body.document);

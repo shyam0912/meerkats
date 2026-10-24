@@ -1,10 +1,10 @@
-import { MAX_SNAPSHOT_BYTES, MAX_WHITEBOARD_PAGES, type PageBackground, type SerializedWhiteboard } from '../../contracts';
+import { MAX_SNAPSHOT_BYTES, MAX_WHITEBOARD_PAGES, type PageBackground, type SerializedWhiteboard, type TeachingShape } from '../../contracts';
 import { createDocument, documentReducer, type DocumentAction, type DocumentOwner, type DocumentState } from './document';
 import type { Stroke } from '../types/drawing';
 
-export interface BoardPage { id: string; background: PageBackground; objects: readonly Stroke[] }
+export interface BoardPage { id: string; background: PageBackground; objects: readonly Stroke[]; shapes?: readonly TeachingShape[] }
 export interface WhiteboardDocument {
-  schemaVersion: 2; id: string; owner: DocumentOwner; revision: number;
+  schemaVersion: 2 | 3; id: string; owner: DocumentOwner; revision: number;
   bounds: { width: 1200; height: 675 }; activePageId: string;
   pages: readonly BoardPage[]; deletedPages: readonly BoardPage[];
 }
@@ -27,20 +27,23 @@ export function boardSurface(board: WhiteboardState, pageId = board.document.act
   const doc = board.document; const page = doc.pages.find(p => p.id === pageId);
   if (!page) throw new Error('Whiteboard page not found');
   return { document: { schemaVersion: 1, id: doc.id, owner: doc.owner, bounds: doc.bounds, revision: doc.revision,
-    objects: page.objects, pageId: page.id, background: page.background }, ...(board.histories[page.id] ?? { past: [], future: [] }) };
+    objects: page.objects, shapes: page.shapes, pageId: page.id, background: page.background }, ...(board.histories[page.id] ?? { past: [], future: [] }) };
 }
 export function boardPayload(document: WhiteboardDocument): SerializedWhiteboard {
   const { revision, ...rest } = document;
   // Immutable internal arrays become JSON arrays at the serialization boundary.
-  return { ...rest, owner: { ...rest.owner, target: { kind: 'whiteboard' } }, localRevision: revision,
-    pages: document.pages.map(p => ({ ...p, objects: [...p.objects] })),
-    deletedPages: document.deletedPages.map(p => ({ ...p, objects: [...p.objects] })) };
+  const base = { ...rest, owner: { ...rest.owner, target: { kind: 'whiteboard' as const } }, localRevision: revision };
+  const inkPage = (p: BoardPage) => ({ id: p.id, background: p.background, objects: [...p.objects] });
+  const shapePage = (p: BoardPage) => ({ ...inkPage(p), shapes: [...(p.shapes ?? [])] });
+  return document.schemaVersion === 3
+    ? { ...base, schemaVersion: 3, pages: document.pages.map(shapePage), deletedPages: document.deletedPages.map(shapePage) }
+    : { ...base, schemaVersion: 2, pages: document.pages.map(inkPage), deletedPages: document.deletedPages.map(inkPage) };
 }
 function accept(previous: WhiteboardState, next: WhiteboardState): WhiteboardState {
   const pages = [...next.document.pages, ...next.document.deletedPages];
   if (pages.length > MAX_WHITEBOARD_PAGES) return { ...previous, error: `This board allows ${MAX_WHITEBOARD_PAGES} pages including deleted pages. No page was added.` };
-  if (pages.some(p => p.objects.length > 10000) || new TextEncoder().encode(JSON.stringify(boardPayload(next.document))).byteLength > MAX_SNAPSHOT_BYTES)
-    return { ...previous, error: 'Board capacity reached (2 MiB / 10,000 ink actions per page). The last action was not applied. Export your work, or undo/clear ink to make space.' };
+  if (pages.some(p => p.objects.length + (p.shapes?.length ?? 0) > 10000) || new TextEncoder().encode(JSON.stringify(boardPayload(next.document))).byteLength > MAX_SNAPSHOT_BYTES)
+    return { ...previous, error: 'Board capacity reached (2 MiB / 10,000 objects per page). The last action was not applied. Export your work, or undo/clear ink to make space.' };
   return { ...next, error: undefined };
 }
 export function boardInkReducer(board: WhiteboardState, pageId: string, action: DocumentAction): WhiteboardState {
@@ -48,7 +51,8 @@ export function boardInkReducer(board: WhiteboardState, pageId: string, action: 
   const before = boardSurface(board, pageId); const after = documentReducer(before, action);
   if (after === before) return board;
   return accept(board, { ...board, document: { ...board.document, revision: board.document.revision + 1,
-    pages: board.document.pages.map(p => p.id === pageId ? { ...p, objects: after.document.objects } : p) },
+    schemaVersion: action.type === 'commit-shape' ? 3 : board.document.schemaVersion,
+    pages: board.document.pages.map(p => p.id === pageId ? { ...p, objects: after.document.objects, ...(after.document.shapes ? { shapes: after.document.shapes } : {}) } : p) },
     histories: { ...board.histories, [pageId]: { past: after.past, future: after.future } } });
 }
 export function pageReducer(board: WhiteboardState, action: PageAction): WhiteboardState {

@@ -1,8 +1,9 @@
 import Konva from 'konva';
 import type { DrawingDocument } from './document';
 import { backgroundMarks, PAPER_MARK } from './background';
+import { shapePath } from './teachingShapes';
 
-/** Replays committed ink only, at logical resolution. No editor DOM or live draft is captured. */
+/** Replays committed content at logical resolution. No editor DOM or live draft is captured. */
 export async function exportBoardPng(document: DrawingDocument, pixelRatio = 2): Promise<Blob> {
   const container = window.document.createElement('div');
   const stage = new Konva.Stage({ container, width: document.bounds.width, height: document.bounds.height });
@@ -21,7 +22,11 @@ export async function exportBoardPng(document: DrawingDocument, pixelRatio = 2):
         : new Konva.Line({ ...common, points: [...stroke.points], stroke: stroke.color, strokeWidth: stroke.width,
           tension: .5, lineCap: 'round', lineJoin: 'round' }));
     }
-    stage.add(ink); stage.draw();
+    stage.add(ink);
+    const shapes = new Konva.Layer({ listening: false });
+    for (const shape of document.shapes ?? []) shapes.add(new Konva.Path({ data: shapePath(shape), stroke: shape.color,
+      strokeWidth: shape.width, lineCap: 'round', lineJoin: 'round', listening: false }));
+    stage.add(shapes); stage.draw();
     const canvas = stage.toCanvas({ pixelRatio });
     return await new Promise<Blob>((resolve, reject) => canvas.toBlob(blob => blob ? resolve(blob) : reject(new Error('PNG encoding failed')), 'image/png'));
   } finally { stage.destroy(); container.remove(); }

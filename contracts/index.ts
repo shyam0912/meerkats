@@ -55,12 +55,45 @@ export const whiteboardV2Schema = z.strictObject({
   if (new TextEncoder().encode(JSON.stringify(doc)).byteLength > MAX_SNAPSHOT_BYTES)
     ctx.addIssue({ code: 'custom', message: 'Snapshot exceeds 2 MiB limit' });
 });
-export const documentSchema = z.union([documentV1Schema, whiteboardV2Schema]);
+const position = z.strictObject({ x: z.number().finite().min(0).max(1200), y: z.number().finite().min(0).max(675) });
+const shapeStyle = { id: uuid, kind: z.literal('shape'), color: z.string().regex(/^#[0-9a-fA-F]{6}$/), width: z.number().positive().max(20) };
+/** Geometry is scene data, never renderer nodes. Box origins and endpoints can be transformed in later increments. */
+export const teachingShapeSchema = z.discriminatedUnion('shape', [
+  z.strictObject({ ...shapeStyle, shape: z.literal('line'), start: position, end: position }),
+  z.strictObject({ ...shapeStyle, shape: z.literal('arrow'), start: position, end: position }),
+  z.strictObject({ ...shapeStyle, shape: z.literal('rectangle'), origin: position, size: z.strictObject({ width: z.number().positive().max(1200), height: z.number().positive().max(675) }) }),
+  z.strictObject({ ...shapeStyle, shape: z.literal('triangle'), origin: position, size: z.strictObject({ width: z.number().positive().max(1200), height: z.number().positive().max(675) }) }),
+  z.strictObject({ ...shapeStyle, shape: z.literal('circle'), center: position, radius: z.number().positive().max(337.5) }),
+]).superRefine((s, ctx) => {
+  const invalid = s.shape === 'line' || s.shape === 'arrow' ? Math.hypot(s.end.x - s.start.x, s.end.y - s.start.y) < 1
+    : s.shape === 'circle' ? s.center.x - s.radius < 0 || s.center.y - s.radius < 0 || s.center.x + s.radius > 1200 || s.center.y + s.radius > 675
+    : s.origin.x + s.size.width > 1200 || s.origin.y + s.size.height > 675;
+  if (invalid) ctx.addIssue({ code: 'custom', message: 'Invalid shape geometry or scene bounds' });
+});
+export type TeachingShape = z.infer<typeof teachingShapeSchema>;
+export type TeachingShapeType = TeachingShape['shape'];
+export const whiteboardV3Schema = z.strictObject({
+  ...whiteboardV2Schema.shape, schemaVersion: z.literal(3),
+  pages: z.array(pageSchema.extend({ shapes: z.array(teachingShapeSchema).max(10000) })).min(1).max(MAX_WHITEBOARD_PAGES),
+  deletedPages: z.array(pageSchema.extend({ shapes: z.array(teachingShapeSchema).max(10000) })).max(MAX_WHITEBOARD_PAGES),
+}).superRefine((doc, ctx) => {
+  // Reuse all existing page/ink checks without changing the v2 wire format.
+  const withoutShapes = (p: typeof doc.pages[number]) => ({ id: p.id, background: p.background, objects: p.objects });
+  if (!whiteboardV2Schema.safeParse({ ...doc, schemaVersion: 2, pages: doc.pages.map(withoutShapes), deletedPages: doc.deletedPages.map(withoutShapes) }).success)
+    ctx.addIssue({ code: 'custom', message: 'Invalid whiteboard pages or ink' });
+  if ([...doc.pages, ...doc.deletedPages].some(p => p.objects.length + p.shapes.length > 10000 || new Set([...p.objects, ...p.shapes].map(o => o.id)).size !== p.objects.length + p.shapes.length))
+    ctx.addIssue({ code: 'custom', message: 'Duplicate object ID or page object limit exceeded' });
+  if (new TextEncoder().encode(JSON.stringify(doc)).byteLength > MAX_SNAPSHOT_BYTES)
+    ctx.addIssue({ code: 'custom', message: 'Snapshot exceeds 2 MiB limit' });
+});
+export const documentSchema = z.union([documentV1Schema, whiteboardV2Schema, whiteboardV3Schema]);
 export type SerializedV1 = z.infer<typeof documentV1Schema>;
-export type SerializedWhiteboard = z.infer<typeof whiteboardV2Schema>;
+export type SerializedWhiteboard = z.infer<typeof whiteboardV2Schema> | z.infer<typeof whiteboardV3Schema>;
 /** Deterministic page identity; never mutate the original or an outbox payload. */
+export function migrateWhiteboard(doc: SerializedV1): z.infer<typeof whiteboardV2Schema>;
+export function migrateWhiteboard(doc: SerializedV1 | SerializedWhiteboard): SerializedWhiteboard;
 export function migrateWhiteboard(doc: SerializedV1 | SerializedWhiteboard): SerializedWhiteboard {
-  if (doc.schemaVersion === 2) return doc;
+  if (doc.schemaVersion !== 1) return doc;
   if (doc.owner.target.kind !== 'whiteboard') throw new Error('Only whiteboards migrate');
   return whiteboardV2Schema.parse({ schemaVersion: 2, id: doc.id, owner: doc.owner, bounds: doc.bounds,
     localRevision: doc.localRevision + 1, activePageId: doc.id,

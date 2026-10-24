@@ -1,4 +1,4 @@
-import { Stage, Layer, Line, Circle } from "react-konva";
+import { Stage, Layer, Line, Circle, Path } from "react-konva";
 import type Konva from "konva";
 import { useCallback, useEffect, useRef, useState, type PointerEvent as ReactPointerEvent } from "react";
 import useDrawing from "../../store/useDrawing";
@@ -6,9 +6,12 @@ import { ToolManager } from "../../drawing/ToolManager";
 import { scenePoint } from "../../drawing/scene";
 import AnnotationLayer from "../layers/AnnotationLayer";
 import PageBackground from '../whiteboard/PageBackground';
+import { ShapeInteraction, shapePath } from '../../drawing/teachingShapes';
 
 export default function DrawingCanvas({ enabled = true, transparent = false }: { enabled?: boolean; transparent?: boolean }) {
   const containerRef = useRef<HTMLDivElement>(null);
+  const draftShape = useRef<Konva.Path>(null);
+  const [shapes] = useState(() => new ShapeInteraction());
   const draftLine = useRef<Konva.Line>(null);
   const draftDot = useRef<Konva.Circle>(null);
   const frame = useRef<number | null>(null);
@@ -17,11 +20,14 @@ export default function DrawingCanvas({ enabled = true, transparent = false }: {
   const [inputError, setInputError] = useState("");
   const {
     document, selectedTool, strokeColor, strokeWidth, eraserWidth,
-    commitStroke, setInteracting, whiteboard, changePage,
+    commitStroke, commitShape, shapeType, shapeColor, shapeWidth, setInteracting, whiteboard, changePage,
   } = useDrawing();
 
   const paintDraft = useCallback(() => {
     frame.current = null;
+    const shape = shapes.draft;
+    draftShape.current?.setAttrs(shape ? { visible: true, data: shapePath(shape), stroke: shape.color, strokeWidth: shape.width } : { visible: false });
+    draftShape.current?.getLayer()?.batchDraw();
     const draft = manager.draft;
     draftLine.current?.visible(false);
     draftDot.current?.visible(false);
@@ -39,14 +45,15 @@ export default function DrawingCanvas({ enabled = true, transparent = false }: {
       }
     }
     draftLine.current?.getLayer()?.batchDraw();
-  }, [manager]);
+  }, [manager, shapes]);
 
   const schedulePaint = () => {
     if (frame.current === null) frame.current = requestAnimationFrame(paintDraft);
   };
 
   const cancelInteraction = useCallback(() => {
-    const pointerId = manager.pointerId;
+    const pointerId = manager.pointerId ?? shapes.pointerId;
+    shapes.cancel();
     manager.cancel();
     const element = containerRef.current;
     if (pointerId !== null && element?.hasPointerCapture(pointerId)) element.releasePointerCapture(pointerId);
@@ -54,7 +61,7 @@ export default function DrawingCanvas({ enabled = true, transparent = false }: {
     frame.current = null;
     paintDraft();
     setInteracting(false);
-  }, [manager, paintDraft, setInteracting]);
+  }, [manager, shapes, paintDraft, setInteracting]);
 
   useEffect(() => {
     const element = containerRef.current;
@@ -86,7 +93,10 @@ export default function DrawingCanvas({ enabled = true, transparent = false }: {
 
   const begin = (event: ReactPointerEvent<HTMLDivElement>) => {
     if (!enabled || event.button !== 0 || !event.isPrimary || size.width <= 1 || size.height <= 1) return;
-    if (!manager.begin(event.pointerId,
+    if (manager.pointerId !== null || shapes.pointerId !== null) return;
+    if (selectedTool === 'shape') {
+      if (transparent || !document.pageId || !shapes.begin(event.pointerId, crypto.randomUUID(), { shape: shapeType, color: shapeColor, width: shapeWidth }, point(event))) return;
+    } else if (!manager.begin(event.pointerId,
       { tool: selectedTool, color: strokeColor, width: selectedTool === "eraser" ? eraserWidth / 6 : strokeWidth }, point(event), crypto.randomUUID())) return;
     try {
       event.currentTarget.setPointerCapture(event.pointerId);
@@ -103,6 +113,10 @@ export default function DrawingCanvas({ enabled = true, transparent = false }: {
   };
 
   const move = (event: ReactPointerEvent<HTMLDivElement>) => {
+    if (shapes.pointerId === event.pointerId) {
+      if (event.pointerType === 'mouse' && event.buttons === 0) { cancelInteraction(); return; }
+      shapes.move(event.pointerId, point(event)); schedulePaint(); return;
+    }
     if (manager.pointerId !== event.pointerId) return;
     if (event.pointerType === "mouse" && event.buttons === 0) { cancelInteraction(); return; }
     const samples = event.nativeEvent.getCoalescedEvents?.() ?? [];
@@ -112,6 +126,14 @@ export default function DrawingCanvas({ enabled = true, transparent = false }: {
   };
 
   const complete = (event: ReactPointerEvent<HTMLDivElement>) => {
+    if (shapes.pointerId === event.pointerId) {
+      const shape = shapes.complete(event.pointerId, point(event));
+      if (event.currentTarget.hasPointerCapture(event.pointerId)) event.currentTarget.releasePointerCapture(event.pointerId);
+      if (frame.current !== null) cancelAnimationFrame(frame.current);
+      frame.current = null; paintDraft();
+      if (shape) commitShape(shape);
+      setInteracting(false); return;
+    }
     const stroke = manager.complete(event.pointerId, point(event));
     if (!stroke) return;
     if (event.currentTarget.hasPointerCapture(event.pointerId)) event.currentTarget.releasePointerCapture(event.pointerId);
@@ -126,13 +148,13 @@ export default function DrawingCanvas({ enabled = true, transparent = false }: {
     <div ref={containerRef} role="region" aria-label={transparent ? "Content annotation surface" : "Whiteboard drawing surface"} tabIndex={enabled ? 0 : -1}
       data-document-id={document.id} data-session-id={document.owner.sessionId}
       data-page-id={document.pageId} data-background={document.background}
-      data-ink-count={document.objects.length} data-revision={document.revision}
+      data-shape-count={document.shapes?.length ?? 0} data-ink-count={document.objects.length} data-revision={document.revision}
       data-input-owner={enabled ? "ink" : "content"}
       className="absolute inset-0 overflow-hidden outline-none focus-visible:ring-2 focus-visible:ring-teal-600"
       style={{ touchAction: enabled ? "none" : "auto", userSelect: "none", pointerEvents: enabled ? "auto" : "none", background: transparent ? "transparent" : "white" }}
       onPointerDown={begin} onPointerMove={move} onPointerUp={complete}
-      onPointerCancel={(event) => { if (manager.pointerId === event.pointerId) cancelInteraction(); }}
-      onLostPointerCapture={(event) => { if (manager.pointerId === event.pointerId) cancelInteraction(); }}
+      onPointerCancel={(event) => { if (manager.pointerId === event.pointerId || shapes.pointerId === event.pointerId) cancelInteraction(); }}
+      onLostPointerCapture={(event) => { if (manager.pointerId === event.pointerId || shapes.pointerId === event.pointerId) cancelInteraction(); }}
       onKeyDown={(event) => { if (event.key === "Escape") cancelInteraction(); }}>
       {!transparent && <PageBackground background={document.background} />}
       <Stage width={size.width} height={size.height} className="absolute inset-0" listening={false}>
@@ -142,10 +164,14 @@ export default function DrawingCanvas({ enabled = true, transparent = false }: {
           <Line ref={draftLine} visible={false} tension={0.5} lineCap="round" lineJoin="round" listening={false} />
           <Circle ref={draftDot} visible={false} listening={false} />
         </Layer>
+        {!transparent && (selectedTool === 'shape' || Boolean(document.shapes?.length)) && <Layer listening={false} scaleX={size.width / document.bounds.width} scaleY={size.height / document.bounds.height}>
+          {document.shapes?.map(shape => <Path key={shape.id} data={shapePath(shape)} stroke={shape.color} strokeWidth={shape.width} lineCap="round" lineJoin="round" listening={false} />)}
+          <Path ref={draftShape} visible={false} lineCap="round" lineJoin="round" listening={false} />
+        </Layer>}
       </Stage>
       {inputError && <p role="alert" className="absolute bottom-4 left-4 bg-white p-3 text-red-700">{inputError}</p>}
       {!transparent && whiteboard.error && <div role="alert" className="wb-capacity" onPointerDown={event => event.stopPropagation()}>
-        <span>{whiteboard.error}</span><button className="workspace-button" disabled={manager.pointerId !== null} onClick={() => changePage({ type: 'dismiss-error' })}>Dismiss</button>
+        <span>{whiteboard.error}</span><button className="workspace-button" disabled={manager.pointerId !== null || shapes.pointerId !== null} onClick={() => changePage({ type: 'dismiss-error' })}>Dismiss</button>
       </div>}
     </div>
   );

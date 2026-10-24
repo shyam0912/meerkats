@@ -75,14 +75,14 @@ export default function WhiteboardPro() {
     {message && <div className="wb-message" role="alert">{message}<button className="workspace-button" aria-label="Dismiss export message" disabled={isInteracting} onClick={() => setMessage('')}>Close</button></div>}
     <dialog ref={dialog} className="wb-recent" aria-labelledby="recent-title" onCancel={event => { event.preventDefault(); setRecentOpen(false); }}>
       <div className="wb-dialog-heading"><h2 id="recent-title">Recent boards</h2><button ref={recentClose} className="workspace-button" aria-label="Close recent boards" onClick={() => setRecentOpen(false)}>Close</button></div>
-      <p>Standalone boards saved in this browser. Reopening restores ink, not Undo history.</p>
+      <p>Standalone boards saved in this browser. Reopening restores board content, not Undo history.</p>
       {recentError ? <p role="alert">Recent boards could not be read. Stored data has not been changed. Close and try again.</p>
         : !recent ? <p>Reading saved boards…</p> : <>
           {recent.unavailable > 0 && <p role="alert">{recent.unavailable} unreadable record(s) left untouched.</p>}
           {!recent.boards.length && <p>No saved standalone boards yet.</p>}
           <ul>{recent.boards.map(board => <li key={board.id}><button className="workspace-button" disabled={busy || board.id === document.owner.sessionId}
             onClick={() => void go('/workspace?session=' + board.id)}>
-            <span>Board {board.id.slice(0, 8)}{board.id === document.owner.sessionId ? ' · Current' : ''}<small>{new Date(board.savedAt).toLocaleString()} · {board.inkCount ? 'Contains ink actions' : 'Empty board'}</small></span><span aria-hidden="true">↗</span>
+            <span>Board {board.id.slice(0, 8)}{board.id === document.owner.sessionId ? ' · Current' : ''}<small>{new Date(board.savedAt).toLocaleString()} · {board.inkCount ? 'Contains board content' : 'Empty board'}</small></span><span aria-hidden="true">↗</span>
           </button></li>)}</ul>
         </>}
       <p className="wb-local-note">Up to 20 recent boards. Browser storage is local, not a backup. PNG export is a picture, not an editable board.</p>

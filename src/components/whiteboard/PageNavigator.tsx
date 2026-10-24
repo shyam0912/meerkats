@@ -34,7 +34,7 @@ export default function PageNavigator() {
       for (const p of board.pages) {
         try {
           const surface = { schemaVersion: 1 as const, id: board.id, owner: board.owner, revision: board.revision,
-            bounds: board.bounds, objects: p.objects, background: p.background };
+            bounds: board.bounds, objects: p.objects, shapes: p.shapes, background: p.background };
           const blob = await exportBoardPng(surface, .15); if (!active) return;
           const url = URL.createObjectURL(blob); urls.push(url);
           setPreviews(previous => ({ revision: board.revision, urls: { ...(previous.revision === board.revision ? previous.urls : {}), [p.id]: url } }));
@@ -61,7 +61,7 @@ export default function PageNavigator() {
           aria-pressed={page.background === background} disabled={isInteracting} onClick={() => changePage({ type: 'background', id: page.id, background })}>
           {background === 'grid' ? 'Square grid' : background[0]!.toUpperCase() + background.slice(1)}</button>)}
       </div>
-      <p className="wb-page-help">Undo/Redo and Clear affect ink on the current page. Deleted pages can be restored below.</p>
+      <p className="wb-page-help">Undo/Redo affect this page. Clear ink leaves shapes intact. Deleted pages can be restored below.</p>
       {whiteboard.error && <p role="alert">{whiteboard.error}</p>}
       <div className="wb-pages-scroll">
         <ol className="wb-page-list">{board.pages.map((p, i) => <li key={p.id} data-page-id={p.id}>
@@ -72,7 +72,7 @@ export default function PageNavigator() {
             <button className="workspace-button" aria-label={`Move page ${i + 1} later`} disabled={i === board.pages.length - 1 || isInteracting} onClick={() => changePage({ type: 'move', id: p.id, direction: 1 })}>→</button>
             <button className="workspace-button" aria-label={`Delete page ${i + 1}`} disabled={board.pages.length === 1 || isInteracting} onClick={() => setDeleting(p.id)}>Delete</button></div>
         </li>)}</ol>
-        {board.deletedPages.length > 0 && <section aria-label="Deleted pages"><h3>Deleted pages</h3><p>Retained with their ink and background; still count toward board capacity.</p>
+        {board.deletedPages.length > 0 && <section aria-label="Deleted pages"><h3>Deleted pages</h3><p>Retained with their ink, shapes and background; still count toward board capacity.</p>
           {board.deletedPages.map((p, i) => <button key={p.id} className="workspace-button" disabled={isInteracting} onClick={() => changePage({ type: 'restore', id: p.id })}>Restore deleted page {i + 1}</button>)}
         </section>}
         {backup && backup.snapshot.whiteboard.schemaVersion === 1 && <section aria-label="Original v1 recovery"><h3>Original board preserved</h3>
@@ -82,7 +82,7 @@ export default function PageNavigator() {
         {backupError && <p role="alert">The migration backup could not be read. Existing stored data was left untouched.</p>}
       </div>
     </dialog>
-    <ConfirmDialog open={deleting !== null} title="Delete this page?" message="The page will move to Deleted pages, where you can restore its ink and background. Other pages will not change."
+    <ConfirmDialog open={deleting !== null} title="Delete this page?" message="The page will move to Deleted pages, where you can restore its ink, shapes and background. Other pages will not change."
       confirmText="Delete page" onCancel={() => setDeleting(null)} onConfirm={() => { if (deleting) changePage({ type: 'delete', id: deleting }); setDeleting(null); close.current?.focus(); }} />
   </>;
 }

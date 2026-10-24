@@ -54,6 +54,18 @@
 .wb-pages section button { margin: 8px 8px 0 0; }
 .wb-capacity { position: absolute; bottom: 12px; left: 12px; right: 12px; display: flex; align-items: center; gap: 12px; padding: 12px; background: #fff1e4; color: #743c18; font-size: 16px; }
 .wb-controls .wb-pages-trigger { white-space: nowrap; }
+.wb-shapes-trigger { flex-direction: column; gap: 0; }
+.wb-shapes-trigger small { font-size: 12px; }
+.wb-shape-tray { margin: auto; width: min(680px, calc(100vw - 32px)); max-height: calc(100dvh - 32px); overflow: auto; padding: 24px; border-radius: 20px; color: var(--mk-text); background: #fcfcf6; }
+.wb-shape-tray::backdrop { background: #203e3945; }
+.wb-shape-choices { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 8px; margin-block: 20px; }
+.wb-shape-choices button { flex-direction: column; padding: 10px 4px; }
+.wb-shape-style { display: flex; gap: 24px; align-items: end; }
+.wb-shape-style label, .wb-shape-style legend { font-size: 18px; font-weight: 600; }
+.wb-shape-style input { display: block; width: 100px; height: 60px; margin-top: 10px; }
+.wb-shape-style fieldset { flex: 1; min-width: 0; }
+.wb-shape-tray p { font-size: 16px; line-height: 1.5; margin-top: 16px; }
+@media (max-width: 1400px) { .wb-footer-note { display: none; } }
 @media (max-width: 1100px) {
   .wb-header { padding: 8px 16px; gap: 10px; min-height: 80px; }
   .wb-title h1 { font-size: 24px; }
