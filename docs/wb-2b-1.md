@@ -16,7 +16,7 @@ The ink ToolManager, PenTool and EraserTool are unchanged. A separate gesture-sc
 
 Shapes render in a separate layer above ink. Both historic and new destination-out eraser masks affect ink only; shapes and backgrounds are unaffected. Shared vector-path geometry is used by live rendering, thumbnails and PNG export. The extra live Konva layer is mounted only for a selected shape tool or existing shapes. Circle drags create a true circle inscribed in the drag rectangle; triangle drags create an upright isosceles triangle. Sub-two-unit or degenerate drags create nothing. Strokes at scene edges can be clipped by the existing scene boundary.
 
-Per-page history orders completed ink and shape actions together. Undo/Redo retains the same shape ID and geometry. Page reordering, recoverable deletion and restoration retain shape data. Clear ink keeps its existing meaning and does not remove shapes; the Shapes tray states this explicitly. Undo history remains memory-only after reload. Individual shape deletion and editing await WB-2B.2.
+Per-page history orders completed ink and shape actions together. Undo/Redo retains the same shape ID and geometry. Page reordering, recoverable deletion and restoration retain shape data. Following the approved Clear behavior correction, Clear removes all ink, eraser masks and shapes on the current page in one reversible operation. Its confirmation asks “Clear everything on this page?”; page identity, background and other pages remain unchanged. Clear is available on shape-only pages and is a no-op on an empty page. Undo history remains memory-only after reload. Individual shape deletion and editing await WB-2B.2.
 
 ## Teacher UI
 
@@ -24,7 +24,7 @@ Standalone Whiteboard Pro adds a modal Shapes tray with five large labelled choi
 
 ## Validation coverage
 
-New unit tests cover geometry, reverse dragging, degeneracy, gesture settings stability, cancellation, secondary pointer rejection, mixed ordered history, branching, Clear ink isolation, per-page operations, capacity, v1/v2/v3 contracts, IndexedDB recovery, immutable pending retries and old-client protection. Existing tests that inspect raw storage now open the current IndexedDB version; their assertions remain unchanged.
+New unit tests cover geometry, reverse dragging, degeneracy, gesture settings stability, cancellation, secondary pointer rejection, mixed ordered history, branching, page Clear isolation, per-page operations, capacity, v1/v2/v3 contracts, IndexedDB recovery, immutable pending retries and old-client protection. The Clear correction adds mixed-content atomic Undo/Redo, shape-only/empty pages, background and other-page preservation, unchanged annotation serialization, pending pre-clear mutation preservation, thumbnail/PNG updates and local/remote recovery. It does not change the persisted schema or gesture lifecycle. Existing tests that inspect raw storage open the current IndexedDB version.
 
 New browser tests use installed Chrome and actual mouse/CDP touch input for five shapes at all three supported resolutions, previews, modal focus, colour/width, PNG pixels after erasing over a shape, Undo/Redo, page deletion/restoration, reload, Recent boards, outside release, resize and cancellation. API coverage verifies v3 persistence and fresh-browser recovery; backend tests verify geometry validation, downgrade prevention, revisions, exact v2 retry and school isolation.
 

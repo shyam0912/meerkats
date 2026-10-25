@@ -55,9 +55,9 @@ test('pages isolate ink/history, reorder by identity, and recover deletion and b
   await expect(surface(page)).toHaveAttribute('data-ink-count', '0'); await dot(page); await dot(page);
   await page.getByRole('button', { name: 'Undo', exact: true }).click(); await expect(surface(page)).toHaveAttribute('data-ink-count', '1');
   await select(page, 1); await expect(surface(page)).toHaveAttribute('data-ink-count', '1'); await expect(surface(page)).toHaveAttribute('data-background', 'lined');
-  await page.getByRole('button', { name: 'Clear ink', exact: true }).click(); await page.getByRole('button', { name: 'Cancel', exact: true }).click();
-  await expect(surface(page)).toHaveAttribute('data-ink-count', '1'); await page.getByRole('button', { name: 'Clear ink', exact: true }).click();
-  await page.getByRole('dialog').getByRole('button', { name: 'Clear ink', exact: true }).click(); await expect(surface(page)).toHaveAttribute('data-ink-count', '0');
+  await page.getByRole('button', { name: 'Clear', exact: true }).click(); await page.getByRole('button', { name: 'Cancel', exact: true }).click();
+  await expect(surface(page)).toHaveAttribute('data-ink-count', '1'); await page.getByRole('button', { name: 'Clear', exact: true }).click();
+  await page.getByRole('dialog').getByRole('button', { name: 'Clear', exact: true }).click(); await expect(surface(page)).toHaveAttribute('data-ink-count', '0');
   await page.getByRole('button', { name: 'Undo', exact: true }).click(); await select(page, 2);
   await page.getByRole('button', { name: 'Redo', exact: true }).click(); await expect(surface(page)).toHaveAttribute('data-ink-count', '2');
   await pages(page); await page.getByRole('button', { name: 'Move page 2 earlier', exact: true }).click();

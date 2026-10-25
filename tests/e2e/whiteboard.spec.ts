@@ -97,24 +97,24 @@ test("first Undo, repeated Undo/Redo, branching, and complete rendered strokes",
 
 test("Clear Cancel, Escape, Confirm, Undo and Redo; modal focus", async ({ page }) => {
   await stroke(page);
-  await page.getByRole("button", { name: "Clear ink", exact: true }).click();
+  await page.getByRole("button", { name: "Clear", exact: true }).click();
   const dialog = page.getByRole("dialog");
   await expect(dialog.getByRole("button", { name: "Cancel" })).toBeFocused();
   await dialog.getByRole("button", { name: "Cancel" }).click();
   await expect(surface(page)).toHaveAttribute("data-ink-count", "1");
-  await expect(page.getByRole("button", { name: "Clear ink", exact: true })).toBeFocused();
-  await page.getByRole("button", { name: "Clear ink", exact: true }).click();
+  await expect(page.getByRole("button", { name: "Clear", exact: true })).toBeFocused();
+  await page.getByRole("button", { name: "Clear", exact: true }).click();
   await page.keyboard.press("Escape");
   await expect(dialog).not.toBeVisible();
   await expect(surface(page)).toHaveAttribute("data-ink-count", "1");
-  await page.getByRole("button", { name: "Clear ink", exact: true }).click();
-  await dialog.getByRole("button", { name: "Clear ink", exact: true }).click();
+  await page.getByRole("button", { name: "Clear", exact: true }).click();
+  await dialog.getByRole("button", { name: "Clear", exact: true }).click();
   await expect(surface(page)).toHaveAttribute("data-ink-count", "0");
   await page.getByRole("button", { name: "Undo", exact: true }).click();
   await expect.poll(async () => (await pixel(page, 300, 180))[3]).toBeGreaterThan(0);
   await page.getByRole("button", { name: "Redo", exact: true }).click();
   await expect(surface(page)).toHaveAttribute("data-ink-count", "0");
-  await expect(page.getByRole("button", { name: "Clear ink", exact: true })).toBeDisabled();
+  await expect(page.getByRole("button", { name: "Clear", exact: true })).toBeDisabled();
 });
 
 test("dots, color, width, live eraser compositing and tool switching", async ({ page }) => {

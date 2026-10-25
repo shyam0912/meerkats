@@ -61,7 +61,7 @@ export default function PageNavigator() {
           aria-pressed={page.background === background} disabled={isInteracting} onClick={() => changePage({ type: 'background', id: page.id, background })}>
           {background === 'grid' ? 'Square grid' : background[0]!.toUpperCase() + background.slice(1)}</button>)}
       </div>
-      <p className="wb-page-help">Undo/Redo affect this page. Clear ink leaves shapes intact. Deleted pages can be restored below.</p>
+      <p className="wb-page-help">Clear removes all drawing content on this page and keeps its background. Undo restores it. Deleted pages can be restored below.</p>
       {whiteboard.error && <p role="alert">{whiteboard.error}</p>}
       <div className="wb-pages-scroll">
         <ol className="wb-page-list">{board.pages.map((p, i) => <li key={p.id} data-page-id={p.id}>

@@ -31,7 +31,7 @@ export default function ShapeMenu() {
         <fieldset><legend>Shape width</legend><div className="wb-presets">{[2, 4, 8].map((width, i) => <button key={width} className="workspace-button" aria-pressed={shapeWidth === width}
           onClick={() => setShapeWidth(width)}>{['Fine', 'Medium', 'Broad'][i]}</button>)}</div></fieldset></div>
       <p>Choose a shape, close this tray, then drag on the board. Circles stay round; triangles are isosceles. Escape cancels a drag.</p>
-      <p>Shapes stay separate from ink. Undo removes a new shape; the ink eraser and Clear ink leave shapes intact.</p>
+      <p>The eraser removes ink only. Clear removes all ink and shapes on this page; Undo restores them together.</p>
     </dialog>
   </>;
 }

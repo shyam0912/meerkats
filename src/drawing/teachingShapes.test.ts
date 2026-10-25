@@ -38,7 +38,7 @@ describe('teaching shape geometry and gestures', () => {
 });
 
 describe('page shape history and version compatibility', () => {
-  it('upgrades only on completed shape, supports ordered mixed history and branching, and leaves shapes during Clear ink', () => {
+  it('upgrades only on completed shape, supports ordered mixed history and branching, and clears ink and shapes together', () => {
     let state = board(); const page = state.document.activePageId; const object = shape();
     expect(boardPayload(state.document).schemaVersion).toBe(2);
     state = boardInkReducer(state, page, { type: 'commit-shape', shape: object });
@@ -48,7 +48,7 @@ describe('page shape history and version compatibility', () => {
     state = boardInkReducer(state, page, { type: 'undo' }); expect(boardSurface(state).document.shapes).toEqual([]);
     state = boardInkReducer(state, page, { type: 'redo' }); expect(boardSurface(state).document.shapes).toEqual([object]);
     state = boardInkReducer(state, page, { type: 'redo' }); state = boardInkReducer(state, page, { type: 'clear' });
-    expect(boardSurface(state).document.shapes).toEqual([object]); expect(boardSurface(state).document.objects).toEqual([]);
+    expect(boardSurface(state).document.shapes).toEqual([]); expect(boardSurface(state).document.objects).toEqual([]);
     state = boardInkReducer(state, page, { type: 'undo' }); state = boardInkReducer(state, page, { type: 'commit-shape', shape: shape('line') });
     expect(boardSurface(state).future).toEqual([]);
   });

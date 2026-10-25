@@ -129,7 +129,7 @@ test("new teaching session resets annotation, whiteboard and fixture state", asy
 for (const viewport of [{ width: 1920, height: 1080 }, { width: 1280, height: 720 }, { width: 1024, height: 600 }]) {
   test(`essential controls and a useful surface at ${viewport.width}×${viewport.height}`, async ({ page }) => {
     await page.setViewportSize(viewport);
-    const names = ["Whiteboard", "Content", "Annotate", "Pen", "Eraser", "Ink settings", "Undo", "Redo", "Clear ink"];
+    const names = ["Whiteboard", "Content", "Annotate", "Pen", "Eraser", "Ink settings", "Undo", "Redo", "Clear"];
     for (const name of names) {
       const control = page.getByRole("button", { name, exact: true });
       await expect(control).toBeVisible();

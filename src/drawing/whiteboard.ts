@@ -43,7 +43,7 @@ function accept(previous: WhiteboardState, next: WhiteboardState): WhiteboardSta
   const pages = [...next.document.pages, ...next.document.deletedPages];
   if (pages.length > MAX_WHITEBOARD_PAGES) return { ...previous, error: `This board allows ${MAX_WHITEBOARD_PAGES} pages including deleted pages. No page was added.` };
   if (pages.some(p => p.objects.length + (p.shapes?.length ?? 0) > 10000) || new TextEncoder().encode(JSON.stringify(boardPayload(next.document))).byteLength > MAX_SNAPSHOT_BYTES)
-    return { ...previous, error: 'Board capacity reached (2 MiB / 10,000 objects per page). The last action was not applied. Export your work, or undo/clear ink to make space.' };
+    return { ...previous, error: 'Board capacity reached (2 MiB / 10,000 objects per page). The last action was not applied. Export your work, or undo/clear page content to make space.' };
   return { ...next, error: undefined };
 }
 export function boardInkReducer(board: WhiteboardState, pageId: string, action: DocumentAction): WhiteboardState {

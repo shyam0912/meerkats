@@ -33,7 +33,7 @@ for (const viewport of [{ width: 1920, height: 1080 }, { width: 1280, height: 72
     }
     await page.screenshot({ path: info.outputPath(`shape-menu-${viewport.width}.png`) });
     await page.keyboard.press('Escape'); await expect(page.getByRole('button', { name: 'Shapes', exact: true })).toBeFocused();
-    for (const name of ['Pen', 'Eraser', 'Undo', 'Redo', 'Clear ink', 'Shapes']) {
+    for (const name of ['Pen', 'Eraser', 'Undo', 'Redo', 'Clear', 'Shapes']) {
       const b = (await page.getByRole('button', { name, exact: true }).boundingBox())!;
       expect(b.x + b.width).toBeLessThanOrEqual(viewport.width); expect(b.y + b.height).toBeLessThanOrEqual(viewport.height);
     }
@@ -60,8 +60,12 @@ test('shape history, page deletion/recovery, Recent boards, ink masks and actual
     const context = canvas.getContext('2d')!; context.drawImage(image, 0, 0); return Array.from(context.getImageData(400, 200, 1, 1).data);
   }, bytes.toString('base64')); expect(pixel).toEqual([255, 0, 0, 255]);
   await page.getByRole('button', { name: 'Dismiss export message' }).click();
-  await page.getByRole('button', { name: 'Clear ink', exact: true }).click(); await page.getByRole('dialog').getByRole('button', { name: 'Clear ink', exact: true }).click();
+  await page.getByRole('button', { name: 'Clear', exact: true }).click(); await page.getByRole('dialog').getByRole('button', { name: 'Clear', exact: true }).click();
+  await expect(surface(page)).toHaveAttribute('data-shape-count', '0');
+  await expect(surface(page)).toHaveAttribute('data-ink-count', '0');
+  await page.getByRole('button', { name: 'Undo', exact: true }).click();
   await expect(surface(page)).toHaveAttribute('data-shape-count', '1');
+  await expect(surface(page)).toHaveAttribute('data-ink-count', '1');
   await page.getByRole('button', { name: /^Pages ·/ }).click(); await page.getByRole('button', { name: 'Add page', exact: true }).click(); await page.getByRole('button', { name: 'Close pages' }).click();
   await select(page, 'Circle'); await drag(page); await page.getByRole('button', { name: 'Undo', exact: true }).click(); await expect(surface(page)).toHaveAttribute('data-shape-count', '0');
   await page.getByRole('button', { name: /^Pages ·/ }).click(); await page.getByRole('button', { name: 'Delete page 1', exact: true }).click();

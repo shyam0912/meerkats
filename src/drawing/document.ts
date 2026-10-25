@@ -23,7 +23,7 @@ export interface DrawingDocument {
 export type DrawingOperation =
   | { type: "add-ink"; object: Stroke }
   | { type: 'add-shape'; object: TeachingShape }
-  | { type: "clear-ink"; removed: readonly Stroke[] };
+  | { type: "clear-content"; removed: readonly Stroke[]; removedShapes?: readonly TeachingShape[] };
 export interface DocumentState {
   document: DrawingDocument;
   past: readonly DrawingOperation[];
@@ -46,7 +46,7 @@ export function createDocument(owner: DocumentOwner, id: string): DocumentState 
 }
 function apply(objects: readonly Stroke[], operation: DrawingOperation, reverse = false) {
   if (operation.type === 'add-shape') return objects;
-  if (operation.type === "clear-ink") return reverse ? operation.removed : [];
+  if (operation.type === "clear-content") return reverse ? operation.removed : [];
   return reverse ? objects.filter((object) => object.id !== operation.object.id)
     : [...objects, operation.object];
 }
@@ -69,8 +69,8 @@ export function documentReducer(state: DocumentState, action: DocumentAction): D
     }
   } else {
     if (action.type === "clear") {
-      if (state.document.objects.length === 0) return state;
-      operation = { type: "clear-ink", removed: state.document.objects };
+      if (state.document.objects.length === 0 && !state.document.shapes?.length) return state;
+      operation = { type: "clear-content", removed: state.document.objects, removedShapes: state.document.shapes };
     } else if (action.type === 'commit-shape') {
       if (!state.document.pageId || !teachingShapeSchema.safeParse(action.shape).success ||
           [...state.document.objects, ...(state.document.shapes ?? [])].some(o => o.id === action.shape.id)) return state;
@@ -87,9 +87,15 @@ export function documentReducer(state: DocumentState, action: DocumentAction): D
     past = [...past, operation].slice(-HISTORY_LIMIT);
     future = [];
   }
-  const shapes = operation.type === 'add-shape' ? action.type === 'undo'
-    ? (state.document.shapes ?? []).filter(s => s.id !== operation.object.id)
-    : [...(state.document.shapes ?? []), operation.object] : state.document.shapes;
+  let shapes = state.document.shapes;
+  if (operation.type === 'clear-content') {
+    // Keep ink-only annotation/v1 projections free of shape fields.
+    shapes = action.type === 'undo' ? operation.removedShapes : shapes ? [] : undefined;
+  } else if (operation.type === 'add-shape') {
+    shapes = action.type === 'undo'
+      ? (shapes ?? []).filter(s => s.id !== operation.object.id)
+      : [...(shapes ?? []), operation.object];
+  }
   return {
     document: { ...state.document, ...(shapes ? { shapes } : {}), objects, revision: state.document.revision + 1 },
     past, future,

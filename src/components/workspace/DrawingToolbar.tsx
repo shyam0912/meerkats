@@ -7,6 +7,8 @@ export default function DrawingToolbar({ pro = false }: { pro?: boolean }) {
   const { document, selectedTool, setSelectedTool, strokeColor, setStrokeColor, strokeWidth, setStrokeWidth,
     eraserWidth, setEraserWidth, isInteracting, canUndo, canRedo, undo, redo, clearCanvas } = useDrawing();
   const [confirmClear, setConfirmClear] = useState(false);
+  const isAnnotation = document.owner.target?.kind === 'annotation';
+  const clearLabel = isAnnotation ? 'Clear ink' : 'Clear';
   const [optionsOpen, setOptionsOpen] = useState(false);
   const options = useRef<HTMLDialogElement>(null);
   const optionsTrigger = useRef<HTMLButtonElement>(null);
@@ -32,8 +34,8 @@ export default function DrawingToolbar({ pro = false }: { pro?: boolean }) {
     </button>
     <button className="workspace-button" onClick={undo} disabled={!canUndo || isInteracting}>Undo</button>
     <button className="workspace-button" onClick={redo} disabled={!canRedo || isInteracting}>Redo</button>
-    <button className="workspace-button clear-button" aria-label="Clear ink"
-      disabled={!document.objects.length || isInteracting} onClick={() => setConfirmClear(true)}>Clear</button>
+    <button className="workspace-button clear-button" aria-label={clearLabel}
+      disabled={(!document.objects.length && !document.shapes?.length) || isInteracting} onClick={() => setConfirmClear(true)}>Clear</button>
     <dialog ref={options} aria-labelledby="ink-settings-title" className={`ink-dialog${pro ? ' wb-ink-tray' : ''}`}
       onCancel={(event) => { event.preventDefault(); setOptionsOpen(false); }}>
       <div className="ink-dialog-heading"><h2 id="ink-settings-title">Ink settings</h2>
@@ -56,9 +58,10 @@ export default function DrawingToolbar({ pro = false }: { pro?: boolean }) {
       <p>{strokeWidth} units pen · {eraserWidth} units eraser. Sizes are independent and scale with the board.</p>
       <p>The eraser removes ink only.</p>
     </dialog>
-    <ConfirmDialog open={confirmClear} title={document.owner.target?.kind === "annotation" ? "Clear these annotations?" : document.pageId ? "Clear this page?" : "Clear this board?"}
-      message="Only ink on this surface will be cleared. Undo can restore it until you reload or leave this session."
-      confirmText="Clear ink" onCancel={() => setConfirmClear(false)}
+    <ConfirmDialog open={confirmClear} title={isAnnotation ? "Clear these annotations?" : "Clear everything on this page?"}
+      message={isAnnotation ? "Only ink on this surface will be cleared. Undo can restore it until you reload or leave this session."
+        : "The background and other pages will stay. Undo can restore this page’s content until you reload or leave this session."}
+      confirmText={clearLabel} onCancel={() => setConfirmClear(false)}
       onConfirm={() => { clearCanvas(); setConfirmClear(false); }} />
   </div>;
 }

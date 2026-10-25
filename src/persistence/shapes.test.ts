@@ -37,3 +37,30 @@ it('blocks old IndexedDB v2 clients and leaves unsupported snapshots untouched',
   await expect(repo.save({ ...record, snapshot: { ...record.snapshot, whiteboard: { ...record.snapshot.whiteboard, schemaVersion: 99 } } } as never)).rejects.toThrow();
   expect(await repo.load(record.snapshot.identity.id)).toEqual(record);
 });
+
+it('persists a complete Clear without rewriting a pending pre-clear mutation', async () => {
+  const original = capacityRecord(4000); const repo = new SessionRepository(crypto.randomUUID());
+  const session = deserializeSession(original.snapshot);
+  const page = session.whiteboard.document.activePageId;
+  const shape = createShape(crypto.randomUUID(), { shape: 'triangle', color: '#b63737', width: 8 }, { x: 100, y: 100 }, { x: 300, y: 300 })!;
+  session.whiteboard = boardInkReducer(session.whiteboard, page, { type: 'commit-shape', shape });
+  const before = serializeSession(session, original.snapshot.identity, original.snapshot.selection);
+  const pending = { mutationId: crypto.randomUUID(), baseServerRevision: 2, document: before.whiteboard };
+  const saved = await repo.save({ ...original, snapshot: before, sync: { [pending.document.id]: { serverRevision: 2, acknowledgedLocalRevision: -1, pending } } });
+  session.whiteboard = boardInkReducer(session.whiteboard, page, { type: 'clear' });
+  const cleared = serializeSession(session, before.identity, before.selection);
+  await repo.save({ ...saved, snapshot: cleared });
+  const recovered = (await repo.load(before.identity.id))!;
+  expect(recovered.snapshot).toEqual(cleared);
+  expect(recovered.sync[pending.document.id]!.pending).toEqual(pending);
+  expect(deserializeSession(recovered.snapshot).whiteboard.document.pages[0]).toMatchObject({ id: page, objects: [], shapes: [] });
+  const api: SessionApi = { create: vi.fn(async x => x), get: vi.fn(), save: vi.fn(async (_id, body) => ({ documentId: body.document.id,
+    mutationId: body.mutationId, serverRevision: body.baseServerRevision + 1, contentHash: 'a'.repeat(64), durable: true as const })) };
+  const controller = new PersistenceController(cleared, () => {}, repo, api, recovered);
+  controller.update(cleared); await controller.flush(); await controller.sync(); controller.stop();
+  const saves = vi.mocked(api.save).mock.calls.map(c => c[1]).filter(s => s.document.id === pending.document.id);
+  expect(saves).toHaveLength(2); expect(saves[0]).toEqual(pending);
+  expect(saves[1]!.document).toEqual(cleared.whiteboard);
+  expect(saves[1]!.mutationId).not.toBe(pending.mutationId);
+  expect(saves[1]!.baseServerRevision).toBe(3);
+});
