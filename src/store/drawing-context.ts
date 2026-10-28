@@ -18,7 +18,7 @@ export interface DrawingContextType {
   document: DrawingDocument;
   mode: TeachingMode;
   setMode: (mode: TeachingMode) => void;
-  selectedTool: DrawingTool | 'shape';
+  selectedTool: DrawingTool | 'shape' | 'select';
   shapeType: import('../../contracts').TeachingShapeType;
   shapeColor: string;
   shapeWidth: number;
@@ -26,13 +26,15 @@ export interface DrawingContextType {
   setShapeColor: (color: string) => void;
   setShapeWidth: (width: number) => void;
   commitShape: (shape: import('../../contracts').TeachingShape) => void;
+  editShape: (shape: import('../../contracts').TeachingShape) => void;
+  deleteShape: (id: string) => void;
   strokeColor: string;
   strokeWidth: number;
   eraserWidth: number;
   isInteracting: boolean;
   canUndo: boolean;
   canRedo: boolean;
-  setSelectedTool: (tool: DrawingTool | 'shape') => void;
+  setSelectedTool: (tool: DrawingTool | 'shape' | 'select') => void;
   setStrokeColor: (color: string) => void;
   setStrokeWidth: (width: number) => void;
   setEraserWidth: (width: number) => void;

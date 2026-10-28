@@ -1,5 +1,6 @@
 import { teachingShapeSchema, type TeachingShape, type TeachingShapeType } from '../../contracts';
 import type { Point } from './tools/InkTool';
+import { boxCorners } from '../../contracts/shape-geometry';
 
 export interface ShapeSettings { shape: TeachingShapeType; color: string; width: number }
 export function createShape(id: string, settings: ShapeSettings, start: Point, end: Point): TeachingShape | null {
@@ -36,6 +37,11 @@ export function shapePath(s: TeachingShape): string {
     return `M ${x - r} ${y} A ${r} ${r} 0 1 0 ${x + r} ${y} A ${r} ${r} 0 1 0 ${x - r} ${y} Z`;
   }
   const { x, y } = s.origin; const { width: w, height: h } = s.size;
+  if (s.rotation) {
+    const [a, b, c, d] = boxCorners(s) as [Point, Point, Point, Point];
+    const points = s.shape === 'rectangle' ? [a, b, c, d] : [{ x: (a.x + b.x) / 2, y: (a.y + b.y) / 2 }, c, d];
+    return points.map((p, i) => `${i ? 'L' : 'M'} ${p.x} ${p.y}`).join(' ') + ' Z';
+  }
   return s.shape === 'rectangle' ? `M ${x} ${y} H ${x + w} V ${y + h} H ${x} Z`
     : `M ${x + w / 2} ${y} L ${x + w} ${y + h} L ${x} ${y + h} Z`;
 }

@@ -10,7 +10,8 @@ import './whiteboard-pro.css';
 import PageNavigator from './PageNavigator';
 
 export default function WhiteboardPro() {
-  const { document, mode, setMode, selection, setSelection, saveStatus, isInteracting, flushBeforeLeave } = useDrawing();
+  const { document, mode, setMode, selection, setSelection, selectedTool, saveStatus, isInteracting, flushBeforeLeave } = useDrawing();
+  const [selectionActionsHost, setSelectionActionsHost] = useState<HTMLDivElement | null>(null);
   const navigate = useNavigate();
   const [focused, setFocused] = useState(false);
   const [recentOpen, setRecentOpen] = useState(false);
@@ -69,9 +70,11 @@ export default function WhiteboardPro() {
     {(unsaved || needsServer) && <aside className="wb-save-help" aria-label="Save guidance">{unsaved
       ? 'Your latest work may not be saved. Keep this board open and export a PNG before leaving. Undo history is not restored after reload.'
       : 'Work is saved on this device. Server synchronization needs attention; keep using this browser for recovery.'}</aside>}
-    <TeachingSurface selection={selection} onSelect={setSelection} />
+    <TeachingSurface selection={selection} onSelect={setSelection} selectionActionsHost={selectionActionsHost} />
     <footer className="wb-controls" aria-label="Whiteboard controls"><DrawingToolbar pro /><PageNavigator />
-      {!focused && <span className="wb-footer-note">A clear space to think.</span>}</footer>
+      {!focused && <span className="wb-footer-note">A clear space to think.</span>}
+      <div ref={setSelectionActionsHost} className="wb-selection-slot" hidden={selectedTool !== 'select'} />
+    </footer>
     {message && <div className="wb-message" role="alert">{message}<button className="workspace-button" aria-label="Dismiss export message" disabled={isInteracting} onClick={() => setMessage('')}>Close</button></div>}
     <dialog ref={dialog} className="wb-recent" aria-labelledby="recent-title" onCancel={event => { event.preventDefault(); setRecentOpen(false); }}>
       <div className="wb-dialog-heading"><h2 id="recent-title">Recent boards</h2><button ref={recentClose} className="workspace-button" aria-label="Close recent boards" onClick={() => setRecentOpen(false)}>Close</button></div>

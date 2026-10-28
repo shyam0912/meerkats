@@ -10,7 +10,7 @@
 .wb-pro .surface-mode-label { display: none; }
 .wb-pro .teaching-area { padding: 12px 20px; }
 .wb-pro .fitted-scene { border-radius: 4px; outline: 1px solid var(--mk-border); box-shadow: 0 3px 14px #203e3906; }
-.wb-controls { display: flex; align-items: center; gap: 20px; padding: 12px 24px; min-height: 88px; background: #fcfcf6; border-top: 1px solid var(--mk-border); }
+.wb-controls { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 20px; padding: 12px 24px; min-height: 88px; background: #fcfcf6; border-top: 1px solid var(--mk-border); }
 .wb-controls .drawing-toolbar { gap: 10px; }
 .wb-footer-note { margin-left: auto; font-size: 16px; color: var(--mk-muted); }
 .wb-pro .ink-settings small { font-size: 14px; }
@@ -65,6 +65,20 @@
 .wb-shape-style input { display: block; width: 100px; height: 60px; margin-top: 10px; }
 .wb-shape-style fieldset { flex: 1; min-width: 0; }
 .wb-shape-tray p { font-size: 16px; line-height: 1.5; margin-top: 16px; }
+.wb-selection { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; }
+.wb-shape-handle { pointer-events: all; cursor: grab; }
+.wb-shape-handle:focus-visible { outline: none; fill: #214f4533; stroke: #214f45; stroke-width: 2; }
+.wb-selection-slot { flex: 0 0 100%; min-height: 60px; }
+.wb-selection-actions { display: flex; align-items: center; gap: 12px; min-height: 60px; color: #214f45; }
+.wb-selection-actions span { font-size: 16px; line-height: 20px; }
+.wb-selection-actions small { display: block; font-size: 14px; line-height: 18px; }
+.wb-selection-actions .workspace-button { min-height: 60px; font-size: 16px; }
+@media (max-width: 1100px) {
+  .wb-pro .clear-button { margin-left: 0; }
+  .wb-controls { gap: 8px; }
+  .wb-controls .drawing-toolbar { gap: 6px; }
+  .wb-pro .ink-settings { padding-inline: 8px; }
+}
 @media (max-width: 1400px) { .wb-footer-note { display: none; } }
 @media (max-width: 1100px) {
   .wb-header { padding: 8px 16px; gap: 10px; min-height: 80px; }

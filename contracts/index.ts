@@ -1,5 +1,6 @@
 import { z } from 'zod';
 import { progressSchema } from './lesson.js';
+import { boxCorners } from './shape-geometry.js';
 
 export const MAX_SNAPSHOT_BYTES = 2 * 1024 * 1024;
 export const uuid = z.uuid();
@@ -57,17 +58,18 @@ export const whiteboardV2Schema = z.strictObject({
 });
 const position = z.strictObject({ x: z.number().finite().min(0).max(1200), y: z.number().finite().min(0).max(675) });
 const shapeStyle = { id: uuid, kind: z.literal('shape'), color: z.string().regex(/^#[0-9a-fA-F]{6}$/), width: z.number().positive().max(20) };
-/** Geometry is scene data, never renderer nodes. Box origins and endpoints can be transformed in later increments. */
+const rotation = z.number().finite().min(-180).max(180).optional();
+/** Optional box rotation preserves existing v3 payloads verbatim; absence means zero. */
 export const teachingShapeSchema = z.discriminatedUnion('shape', [
   z.strictObject({ ...shapeStyle, shape: z.literal('line'), start: position, end: position }),
   z.strictObject({ ...shapeStyle, shape: z.literal('arrow'), start: position, end: position }),
-  z.strictObject({ ...shapeStyle, shape: z.literal('rectangle'), origin: position, size: z.strictObject({ width: z.number().positive().max(1200), height: z.number().positive().max(675) }) }),
-  z.strictObject({ ...shapeStyle, shape: z.literal('triangle'), origin: position, size: z.strictObject({ width: z.number().positive().max(1200), height: z.number().positive().max(675) }) }),
+  z.strictObject({ ...shapeStyle, shape: z.literal('rectangle'), origin: position, size: z.strictObject({ width: z.number().positive().max(1200), height: z.number().positive().max(675) }), rotation }),
+  z.strictObject({ ...shapeStyle, shape: z.literal('triangle'), origin: position, size: z.strictObject({ width: z.number().positive().max(1200), height: z.number().positive().max(675) }), rotation }),
   z.strictObject({ ...shapeStyle, shape: z.literal('circle'), center: position, radius: z.number().positive().max(337.5) }),
 ]).superRefine((s, ctx) => {
   const invalid = s.shape === 'line' || s.shape === 'arrow' ? Math.hypot(s.end.x - s.start.x, s.end.y - s.start.y) < 1
     : s.shape === 'circle' ? s.center.x - s.radius < 0 || s.center.y - s.radius < 0 || s.center.x + s.radius > 1200 || s.center.y + s.radius > 675
-    : s.origin.x + s.size.width > 1200 || s.origin.y + s.size.height > 675;
+    : boxCorners(s).some(p => p.x < -1e-8 || p.y < -1e-8 || p.x > 1200 + 1e-8 || p.y > 675 + 1e-8);
   if (invalid) ctx.addIssue({ code: 'custom', message: 'Invalid shape geometry or scene bounds' });
 });
 export type TeachingShape = z.infer<typeof teachingShapeSchema>;

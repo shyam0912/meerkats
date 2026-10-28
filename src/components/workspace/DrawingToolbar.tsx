@@ -26,11 +26,12 @@ export default function DrawingToolbar({ pro = false }: { pro?: boolean }) {
       onClick={() => setSelectedTool("pen")}>Pen</button>
     <button className="workspace-button" aria-pressed={selectedTool === "eraser"} disabled={isInteracting}
       onClick={() => setSelectedTool("eraser")}>Eraser</button>
-    {pro && <ShapeMenu />}
+    {pro && <><button className="workspace-button" aria-pressed={selectedTool === "select"} disabled={isInteracting}
+      onClick={() => setSelectedTool("select")}>Select</button><ShapeMenu /></>}
     <button className="workspace-button ink-settings" ref={optionsTrigger} aria-label="Ink settings"
       aria-haspopup="dialog" disabled={isInteracting} onClick={() => setOptionsOpen(true)}>
       <span className="ink-swatch" style={{ background: strokeColor }} />
-      <span>Ink settings<small>{selectedTool === "eraser" ? eraserWidth : strokeWidth} units · {selectedTool === 'shape' ? 'pen' : selectedTool}</small></span>
+      <span>Ink settings<small>{selectedTool === "eraser" ? eraserWidth : strokeWidth} units · {(selectedTool === 'shape' || selectedTool === 'select') ? 'pen' : selectedTool}</small></span>
     </button>
     <button className="workspace-button" onClick={undo} disabled={!canUndo || isInteracting}>Undo</button>
     <button className="workspace-button" onClick={redo} disabled={!canRedo || isInteracting}>Redo</button>

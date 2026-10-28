@@ -7,6 +7,7 @@ import { boardInkReducer } from '../drawing/whiteboard';
 import { createShape } from '../drawing/teachingShapes';
 import { PersistenceController } from './controller';
 import type { SessionApi } from './api';
+import { rotateShape, translateShape } from '../drawing/shapeEditing';
 
 it('roundtrips v3 shapes, preserves exact pending v2 requests, and protects against old clients', async () => {
   const original = capacityRecord(4000); const repo = new SessionRepository(crypto.randomUUID());
@@ -36,6 +37,30 @@ it('blocks old IndexedDB v2 clients and leaves unsupported snapshots untouched',
   expect(error).toBe('VersionError');
   await expect(repo.save({ ...record, snapshot: { ...record.snapshot, whiteboard: { ...record.snapshot.whiteboard, schemaVersion: 99 } } } as never)).rejects.toThrow();
   expect(await repo.load(record.snapshot.identity.id)).toEqual(record);
+});
+
+it('recovers transformed v3 geometry and preserves the exact pending pre-edit request', async () => {
+  const original = capacityRecord(4000); const repo = new SessionRepository(crypto.randomUUID());
+  const session = deserializeSession(original.snapshot); const page = session.whiteboard.document.activePageId;
+  const shape = createShape(crypto.randomUUID(), { shape: 'rectangle', color: '#225eaf', width: 8 }, { x: 200, y: 200 }, { x: 400, y: 400 })!;
+  session.whiteboard = boardInkReducer(session.whiteboard, page, { type: 'commit-shape', shape });
+  const before = serializeSession(session, original.snapshot.identity, null);
+  const pending = { mutationId: crypto.randomUUID(), baseServerRevision: 2, document: before.whiteboard };
+  const saved = await repo.save({ ...original, snapshot: before, sync: { [before.whiteboard.id]: { serverRevision: 2, acknowledgedLocalRevision: -1, pending } } });
+  const transformed = rotateShape(translateShape(shape, { x: 150, y: 0 })!, .4)!;
+  session.whiteboard = boardInkReducer(session.whiteboard, page, { type: 'edit-shape', shape: transformed });
+  const snapshot = serializeSession(session, before.identity, null);
+  await repo.save({ ...saved, snapshot }); const recovered = (await repo.load(before.identity.id))!;
+  expect(deserializeSession(recovered.snapshot).whiteboard.document.pages[0]!.shapes).toEqual([transformed]);
+  expect(recovered.snapshot.annotations).toEqual(before.annotations);
+  expect(recovered.sync[before.whiteboard.id]!.pending).toEqual(pending);
+  const api: SessionApi = { create: vi.fn(async x => x), get: vi.fn(), save: vi.fn(async (_id, body) => ({ documentId: body.document.id,
+    mutationId: body.mutationId, serverRevision: body.baseServerRevision + 1, contentHash: 'a'.repeat(64), durable: true as const })) };
+  const controller = new PersistenceController(snapshot, () => {}, repo, api, recovered);
+  controller.update(snapshot); await controller.flush(); await controller.sync(); controller.stop();
+  const saves = vi.mocked(api.save).mock.calls.map(c => c[1]).filter(s => s.document.id === before.whiteboard.id);
+  expect(saves).toHaveLength(2); expect(saves[0]).toEqual(pending); expect(saves[1]!.document).toEqual(snapshot.whiteboard);
+  expect(saves[1]!.mutationId).not.toBe(pending.mutationId); expect(saves[1]!.baseServerRevision).toBe(3);
 });
 
 it('persists a complete Clear without rewriting a pending pre-clear mutation', async () => {

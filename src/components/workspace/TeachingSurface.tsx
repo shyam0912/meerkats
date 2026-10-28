@@ -5,8 +5,9 @@ import DrawingCanvas from "./DrawingCanvas";
 import NeutralScene, { type DemoSelection } from "./NeutralScene";
 import ActivityHost from '../../activities/ActivityHost';
 
-export default function TeachingSurface({ selection, onSelect }: {
+export default function TeachingSurface({ selection, onSelect, selectionActionsHost }: {
   selection: DemoSelection; onSelect: (value: DemoSelection) => void;
+  selectionActionsHost?: HTMLDivElement | null;
 }) {
   const { document, mode, lesson, updateActivity } = useDrawing();
   const activity = lesson?.version.activities.find(a => a.id === lesson.progress.currentActivityId);
@@ -34,7 +35,7 @@ export default function TeachingSurface({ selection, onSelect }: {
           {activity && lesson ? <ActivityHost activity={activity} state={lesson.progress.states[activity.id]!} onChange={state => updateActivity(activity.id, state)} />
             : <NeutralScene selection={selection} onSelect={onSelect} />}
         </div>}
-        <DrawingCanvas key={document.id + ':' + (document.pageId ?? '')} enabled={mode !== "explore"} transparent={isContent} />
+        <DrawingCanvas key={document.id + ':' + (document.pageId ?? '')} enabled={mode !== "explore"} transparent={isContent} selectionActionsHost={selectionActionsHost} />
       </div>}
     </div>
   </main>;

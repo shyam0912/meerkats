@@ -23,6 +23,8 @@ export interface DrawingDocument {
 export type DrawingOperation =
   | { type: "add-ink"; object: Stroke }
   | { type: 'add-shape'; object: TeachingShape }
+  | { type: 'edit-shape'; before: TeachingShape; after: TeachingShape }
+  | { type: 'delete-shape'; object: TeachingShape; index: number }
   | { type: "clear-content"; removed: readonly Stroke[]; removedShapes?: readonly TeachingShape[] };
 export interface DocumentState {
   document: DrawingDocument;
@@ -32,6 +34,8 @@ export interface DocumentState {
 export type DocumentAction =
   | { type: "commit"; stroke: Stroke }
   | { type: 'commit-shape'; shape: TeachingShape }
+  | { type: 'edit-shape'; shape: TeachingShape }
+  | { type: 'delete-shape'; id: string }
   | { type: "clear" }
   | { type: "undo" }
   | { type: "redo" };
@@ -45,7 +49,7 @@ export function createDocument(owner: DocumentOwner, id: string): DocumentState 
   };
 }
 function apply(objects: readonly Stroke[], operation: DrawingOperation, reverse = false) {
-  if (operation.type === 'add-shape') return objects;
+  if (operation.type === 'add-shape' || operation.type === 'edit-shape' || operation.type === 'delete-shape') return objects;
   if (operation.type === "clear-content") return reverse ? operation.removed : [];
   return reverse ? objects.filter((object) => object.id !== operation.object.id)
     : [...objects, operation.object];
@@ -71,6 +75,17 @@ export function documentReducer(state: DocumentState, action: DocumentAction): D
     if (action.type === "clear") {
       if (state.document.objects.length === 0 && !state.document.shapes?.length) return state;
       operation = { type: "clear-content", removed: state.document.objects, removedShapes: state.document.shapes };
+    } else if (action.type === 'edit-shape' || action.type === 'delete-shape') {
+      if (!state.document.pageId) return state;
+      const index = state.document.shapes?.findIndex(s => s.id === (action.type === 'edit-shape' ? action.shape.id : action.id)) ?? -1;
+      const before = state.document.shapes?.[index];
+      if (!before) return state;
+      if (action.type === 'delete-shape') operation = { type: 'delete-shape', object: before, index };
+      else {
+        const parsed = teachingShapeSchema.safeParse(action.shape);
+        if (!parsed.success || parsed.data.shape !== before.shape || JSON.stringify(parsed.data) === JSON.stringify(before)) return state;
+        operation = { type: 'edit-shape', before, after: parsed.data };
+      }
     } else if (action.type === 'commit-shape') {
       if (!state.document.pageId || !teachingShapeSchema.safeParse(action.shape).success ||
           [...state.document.objects, ...(state.document.shapes ?? [])].some(o => o.id === action.shape.id)) return state;
@@ -95,6 +110,14 @@ export function documentReducer(state: DocumentState, action: DocumentAction): D
     shapes = action.type === 'undo'
       ? (shapes ?? []).filter(s => s.id !== operation.object.id)
       : [...(shapes ?? []), operation.object];
+  } else if (operation.type === 'edit-shape') {
+    const replacement = action.type === 'undo' ? operation.before : operation.after;
+    shapes = shapes?.map(s => s.id === replacement.id ? replacement : s);
+  } else if (operation.type === 'delete-shape') {
+    const removed = operation.object;
+    shapes = [...(shapes ?? [])];
+    if (action.type === 'undo') (shapes as TeachingShape[]).splice(operation.index, 0, removed);
+    else shapes = shapes.filter(s => s.id !== removed.id);
   }
   return {
     document: { ...state.document, ...(shapes ? { shapes } : {}), objects, revision: state.document.revision + 1 },

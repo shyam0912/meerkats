@@ -66,6 +66,24 @@ afterAll(async () => {
 });
 
 describe('real PostgreSQL API', () => {
+  it('saves rotated v3 boxes without rewriting earlier retries and rejects stale pre-edit overwrites', async () => {
+    const legacy = saveBody((await create()).id); const v2 = migrateWhiteboard(legacy.document);
+    const shape = { id: randomUUID(), kind: 'shape', shape: 'rectangle', origin: { x: 200, y: 200 }, size: { width: 200, height: 150 }, color: '#225eaf', width: 8 };
+    const document = whiteboardV3Schema.parse({ ...v2, schemaVersion: 3, pages: v2.pages.map(p => ({ ...p, shapes: [shape] })), deletedPages: [] });
+    const before = { mutationId: randomUUID(), baseServerRevision: 0, document };
+    expect((await put(before)).statusCode).toBe(200);
+    const edited = whiteboardV3Schema.parse({ ...document, localRevision: document.localRevision + 1,
+      pages: document.pages.map(p => ({ ...p, shapes: [{ ...shape, rotation: 35 }] })) });
+    const next = { mutationId: randomUUID(), baseServerRevision: 1, document: edited };
+    expect((await put(next)).statusCode).toBe(200);
+    expect((await put(before)).statusCode).toBe(200);
+    expect((await put({ ...before, mutationId: randomUUID(), baseServerRevision: 1 })).statusCode).toBe(409);
+    const recovered = (await app.inject({ url: `/api/v1/sessions/${document.owner.sessionId}` })).json();
+    expect(recovered.documents.find((d: { document: { id: string } }) => d.document.id === document.id).document).toEqual(edited);
+    const invalid = { ...next, mutationId: randomUUID(), baseServerRevision: 2, document: { ...edited,
+      pages: edited.pages.map(p => ({ ...p, shapes: [{ ...shape, rotation: 999 }] })) } };
+    expect((await put(invalid as SaveRequest)).statusCode).toBe(400);
+  });
   it('saves v3 geometry, preserves exact v2 retries and rejects downgrade or malformed shapes', async () => {
     const legacy = saveBody((await create()).id);
     const v2 = { ...legacy, document: migrateWhiteboard(legacy.document) };
