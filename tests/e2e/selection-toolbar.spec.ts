@@ -1,4 +1,5 @@
-import { test, expect } from '@playwright/test';
+import { test, reloadBoard } from '../helpers/board-browser';
+import { expect } from '@playwright/test';
 import { button, surface, drag, point, handleDrag, currentShapes, savedRecord } from '../helpers/shape-editing';
 
 for (const viewport of [{ width: 1920, height: 1080 }, { width: 1280, height: 720 }, { width: 1024, height: 600 }]) {
@@ -54,15 +55,16 @@ for (const viewport of [{ width: 1920, height: 1080 }, { width: 1280, height: 72
   });
 }
 
-test('bottom selection actions preserve touch cancellation, keyboard focus, page isolation and reload', async ({ browser }) => {
-  const context = await browser.newContext({ viewport: { width: 1024, height: 600 }, hasTouch: true }); const page = await context.newPage();
+const touchTest = test.extend({ viewport: { width: 1024, height: 600 }, hasTouch: true });
+
+touchTest('bottom selection actions preserve touch cancellation, keyboard focus, page isolation and reload', async ({ page }) => {
   await page.goto('/'); await button(page, 'Whiteboard').click(); await button(page, 'Shapes').click();
   await button(page, 'Rectangle').click(); await button(page, 'Close shapes').click(); await drag(page, 20, 20, 200, 120);
   await button(page, 'Select').click(); await button(page, 'Next shape').focus(); await page.keyboard.press('Enter');
   await expect(surface(page)).toBeFocused(); const before = await currentShapes(page);
   const handle = (await button(page, 'Resize shape nw').boundingBox())!;
   const start = { x: handle.x + handle.width / 2, y: handle.y + handle.height / 2, id: 1 };
-  const cdp = await context.newCDPSession(page);
+  const cdp = await page.context().newCDPSession(page);
   await cdp.send('Input.dispatchTouchEvent', { type: 'touchStart', touchPoints: [start] });
   await cdp.send('Input.dispatchTouchEvent', { type: 'touchMove', touchPoints: [{ ...start, x: start.x + 15, y: start.y + 10 }] });
   await expect(button(page, 'Next shape')).toBeDisabled(); await expect(button(page, 'Delete shape')).toBeDisabled();
@@ -80,7 +82,7 @@ test('bottom selection actions preserve touch cancellation, keyboard focus, page
   await expect(button(page, 'Next shape')).toBeDisabled(); await expect(button(page, 'Delete shape')).toHaveCount(0);
   await page.getByRole('button', { name: /^Pages ·/ }).click(); await button(page, 'Open page 1').click();
   await button(page, 'Next shape').click(); await expect(surface(page)).not.toHaveAttribute('data-selected-shape', '');
-  expect(await currentShapes(page)).toEqual(resized); await savedRecord(page); await page.reload();
+  expect(await currentShapes(page)).toEqual(resized); await savedRecord(page); await reloadBoard(page);
   expect(await currentShapes(page)).toEqual(resized); await expect(surface(page)).toHaveAttribute('data-selected-shape', '');
-  await context.close();
+
 });

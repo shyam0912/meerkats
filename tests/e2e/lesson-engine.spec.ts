@@ -1,4 +1,5 @@
 import { test, expect, type Page } from '@playwright/test';
+import { test as monitoredBoardTest } from '../helpers/board-browser';
 async function launch(page: Page) {
   await page.goto('/catalog?internal=demo');
   await page.getByRole('button', { name: /Demo class/ }).click();
@@ -68,7 +69,7 @@ test('outline supports direct navigation, Escape and focus return; reveal/reset 
   await page.getByRole('button', { name: 'Reset activity' }).click();
   await expect(page.getByText('0 of 3 prompts revealed')).toBeVisible();
 });
-test('Clear only affects the current activity, and Undo Clear restores it', async ({ page }) => {
+monitoredBoardTest('Clear only affects the current activity, and Undo Clear restores it', async ({ page }) => {
   await launch(page);
   await page.getByRole('button', { name: 'Annotate', exact: true }).click(); await dot(page);
   await page.getByRole('button', { name: 'Next', exact: true }).click();

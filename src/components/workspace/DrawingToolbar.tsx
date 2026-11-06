@@ -27,16 +27,17 @@ export default function DrawingToolbar({ pro = false }: { pro?: boolean }) {
     <button className="workspace-button" aria-pressed={selectedTool === "eraser"} disabled={isInteracting}
       onClick={() => setSelectedTool("eraser")}>Eraser</button>
     {pro && <><button className="workspace-button" aria-pressed={selectedTool === "select"} disabled={isInteracting}
-      onClick={() => setSelectedTool("select")}>Select</button><ShapeMenu /></>}
+      onClick={() => setSelectedTool("select")}>Select</button><ShapeMenu /><button className="workspace-button" aria-pressed={selectedTool === 'text'} disabled={isInteracting}
+      onClick={() => setSelectedTool('text')}>Text</button></>}
     <button className="workspace-button ink-settings" ref={optionsTrigger} aria-label="Ink settings"
       aria-haspopup="dialog" disabled={isInteracting} onClick={() => setOptionsOpen(true)}>
       <span className="ink-swatch" style={{ background: strokeColor }} />
-      <span>Ink settings<small>{selectedTool === "eraser" ? eraserWidth : strokeWidth} units · {(selectedTool === 'shape' || selectedTool === 'select') ? 'pen' : selectedTool}</small></span>
+      <span>Ink settings<small>{selectedTool === "eraser" ? eraserWidth : strokeWidth} units · {(selectedTool === 'shape' || selectedTool === 'select' || selectedTool === 'text') ? 'pen' : selectedTool}</small></span>
     </button>
     <button className="workspace-button" onClick={undo} disabled={!canUndo || isInteracting}>Undo</button>
     <button className="workspace-button" onClick={redo} disabled={!canRedo || isInteracting}>Redo</button>
     <button className="workspace-button clear-button" aria-label={clearLabel}
-      disabled={(!document.objects.length && !document.shapes?.length) || isInteracting} onClick={() => setConfirmClear(true)}>Clear</button>
+      disabled={(!document.objects.length && !document.shapes?.length && !document.texts?.length) || isInteracting} onClick={() => setConfirmClear(true)}>Clear</button>
     <dialog ref={options} aria-labelledby="ink-settings-title" className={`ink-dialog${pro ? ' wb-ink-tray' : ''}`}
       onCancel={(event) => { event.preventDefault(); setOptionsOpen(false); }}>
       <div className="ink-dialog-heading"><h2 id="ink-settings-title">Ink settings</h2>

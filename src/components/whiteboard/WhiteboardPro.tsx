@@ -10,7 +10,7 @@ import './whiteboard-pro.css';
 import PageNavigator from './PageNavigator';
 
 export default function WhiteboardPro() {
-  const { document, mode, setMode, selection, setSelection, selectedTool, saveStatus, isInteracting, flushBeforeLeave } = useDrawing();
+  const { document, mode, setMode, selection, setSelection, selectedTool, saveStatus, isTextEditing, isInteracting, flushBeforeLeave } = useDrawing();
   const [selectionActionsHost, setSelectionActionsHost] = useState<HTMLDivElement | null>(null);
   const navigate = useNavigate();
   const [focused, setFocused] = useState(false);
@@ -61,7 +61,7 @@ export default function WhiteboardPro() {
     <header className="wb-header">
       {!focused && <><button className="workspace-button" disabled={isInteracting || busy} onClick={() => void go('/')}>← Back</button>
         <div className="wb-title"><span>MEERKATS</span><h1>Whiteboard</h1></div></>}
-      <span className={`wb-save${unsaved ? ' wb-save-error' : ''}`} role="status" aria-live="polite">{saveStatus}</span>
+      <span className={`wb-save${unsaved ? ' wb-save-error' : ''}`} role="status" aria-live="polite">{isTextEditing ? 'Text draft · Apply to save' : saveStatus}</span>
       {!focused && <><button ref={recentTrigger} className="workspace-button" disabled={isInteracting || busy} aria-haspopup="dialog"
         onClick={() => { setRecent(null); setRecentError(false); setRecentOpen(true); }}>Recent boards</button>
         <button className="workspace-button" disabled={isInteracting || busy} onClick={() => void exportPng()}>Export PNG</button></>}
@@ -73,7 +73,7 @@ export default function WhiteboardPro() {
     <TeachingSurface selection={selection} onSelect={setSelection} selectionActionsHost={selectionActionsHost} />
     <footer className="wb-controls" aria-label="Whiteboard controls"><DrawingToolbar pro /><PageNavigator />
       {!focused && <span className="wb-footer-note">A clear space to think.</span>}
-      <div ref={setSelectionActionsHost} className="wb-selection-slot" hidden={selectedTool !== 'select'} />
+      <div ref={setSelectionActionsHost} className="wb-selection-slot" hidden={selectedTool !== 'select' && selectedTool !== 'text'} />
     </footer>
     {message && <div className="wb-message" role="alert">{message}<button className="workspace-button" aria-label="Dismiss export message" disabled={isInteracting} onClick={() => setMessage('')}>Close</button></div>}
     <dialog ref={dialog} className="wb-recent" aria-labelledby="recent-title" onCancel={event => { event.preventDefault(); setRecentOpen(false); }}>

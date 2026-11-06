@@ -82,7 +82,7 @@ export class SessionRepository {
             if (!snapshot.lesson && snapshot.identity.context.classId === null && snapshot.identity.context.subjectId === null &&
                 !snapshot.identity.context.classLabel && !snapshot.identity.context.subjectLabel) {
               const board = snapshot.whiteboard;
-              boards.push({ id: snapshot.identity.id, savedAt, inkCount: board.schemaVersion === 1 ? board.objects.length : board.pages.reduce((n, p) => n + p.objects.length + ('shapes' in p ? p.shapes.length : 0), 0) });
+              boards.push({ id: snapshot.identity.id, savedAt, inkCount: board.schemaVersion === 1 ? board.objects.length : board.pages.reduce((n, p) => n + p.objects.length + ('shapes' in p ? p.shapes.length : 0) + ('texts' in p ? p.texts.length : 0), 0) });
               boards.sort((a, b) => b.savedAt.localeCompare(a.savedAt) || a.id.localeCompare(b.id));
               boards.splice(Math.max(0, limit));
             }

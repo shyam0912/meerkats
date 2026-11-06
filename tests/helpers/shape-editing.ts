@@ -1,5 +1,6 @@
 import { expect, type Page } from '@playwright/test';
 import type { LocalRecord } from '../../src/persistence/database';
+import type { BoardPage } from '../../src/drawing/whiteboard';
 export const button = (page: Page, name: string) => page.getByRole('button', { name, exact: true });
 export const surface = (page: Page) => page.getByRole('region', { name: 'Whiteboard drawing surface' });
 export async function point(page: Page, x: number, y: number) {
@@ -24,11 +25,32 @@ export async function handleDrag(page: Page, name: string, dx: number, dy: numbe
 }
 export async function savedRecord(page: Page): Promise<LocalRecord> {
   await expect(page.getByRole('status')).toHaveText(/Saved on this device|Ink synced/);
-  return page.evaluate(async () => {
+  const visible = await surface(page).evaluate(element => ({ ...element.dataset }));
+  const record = await page.evaluate(async () => {
     const db = await new Promise<IDBDatabase>((resolve, reject) => { const r = indexedDB.open('meerkats-teaching-v1', 3); r.onsuccess = () => resolve(r.result); r.onerror = () => reject(r.error); });
     try { return await new Promise<LocalRecord>((resolve, reject) => { const tx = db.transaction('sessions'); const r = tx.objectStore('sessions').get(new URL(location.href).searchParams.get('session')!);
-      tx.oncomplete = () => resolve(r.result as LocalRecord); tx.onabort = () => reject(tx.error); }); } finally { db.close(); }
+      tx.oncomplete = () => {
+        const value = r.result as LocalRecord;
+        if (value) void window.boardQaEvent?.({ type: 'durable-read', time: Date.now(),
+          generation: value.generation, revision: value.snapshot.whiteboard.localRevision,
+          documentId: value.snapshot.whiteboard.id }).catch(() => {});
+        resolve(value);
+      };
+      tx.onabort = () => reject(tx.error); }); } finally { db.close(); }
   });
+  const board = record.snapshot.whiteboard;
+  if (board.schemaVersion === 1) throw new Error('Expected a paged whiteboard');
+  const active: BoardPage | undefined = board.pages.find(p => p.id === board.activePageId);
+  expect({
+    session: record.snapshot.identity.id, owner: board.owner.sessionId, document: board.id,
+    revision: board.localRevision, page: active?.id, ink: active?.objects.length,
+    shapes: active?.shapes?.length ?? 0, texts: active?.texts?.length ?? 0,
+  }).toEqual({
+    session: visible.sessionId, owner: visible.sessionId, document: visible.documentId,
+    revision: Number(visible.revision), page: visible.pageId, ink: Number(visible.inkCount),
+    shapes: Number(visible.shapeCount), texts: Number(visible.textCount),
+  });
+  return record;
 }
 export async function currentShapes(page: Page) {
   const board = (await savedRecord(page)).snapshot.whiteboard;

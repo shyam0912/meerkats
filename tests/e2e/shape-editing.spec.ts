@@ -1,4 +1,5 @@
-import { test, expect } from '@playwright/test';
+import { test, reloadBoard, openRecentBoard } from '../helpers/board-browser';
+import { expect } from '@playwright/test';
 import { readFile } from 'node:fs/promises';
 import { button, surface, point, drag, createShape, select, handleDrag, savedRecord, currentShapes } from '../helpers/shape-editing';
 
@@ -67,9 +68,9 @@ test('edited shapes retain page history, recovery, Clear-all and control-free PN
   await expect(surface(page)).toHaveAttribute('data-ink-count', '0'); expect(await currentShapes(page)).toEqual([]);
   await button(page, 'Undo').click(); expect(await currentShapes(page)).toEqual(edited); await expect(surface(page)).toHaveAttribute('data-ink-count', '1');
   await button(page, 'Redo').click(); expect(await currentShapes(page)).toEqual([]); await button(page, 'Undo').click(); await savedRecord(page);
-  const url = page.url(); await page.reload(); expect(await currentShapes(page)).toEqual(edited);
+  const url = page.url(); await reloadBoard(page); expect(await currentShapes(page)).toEqual(edited);
   await button(page, '← Back').click(); await button(page, 'Whiteboard').click(); await button(page, 'Recent boards').click();
-  await page.getByRole('button').filter({ hasText: 'Board ' + new URL(url).searchParams.get('session')!.slice(0, 8) }).click(); expect(await currentShapes(page)).toEqual(edited);
+  await openRecentBoard(page, new URL(url).searchParams.get('session')!); expect(await currentShapes(page)).toEqual(edited);
 });
 
 test('overlapping shapes use stacking order; keyboard selection, editing, deletion and Undo work', async ({ page }) => {

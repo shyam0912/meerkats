@@ -88,9 +88,31 @@ export const whiteboardV3Schema = z.strictObject({
   if (new TextEncoder().encode(JSON.stringify(doc)).byteLength > MAX_SNAPSHOT_BYTES)
     ctx.addIssue({ code: 'custom', message: 'Snapshot exceeds 2 MiB limit' });
 });
-export const documentSchema = z.union([documentV1Schema, whiteboardV2Schema, whiteboardV3Schema]);
+export const teachingTextSchema = z.strictObject({
+  id: uuid, kind: z.literal('text'), text: z.string().min(1).max(8192)
+    .refine(s => s.trim().length > 0 && Array.from(s).length <= 4096 && s.split('\n').length <= 24, 'Text exceeds limits or is empty')
+    .refine(s => !s.includes('\0') && !Array.from(s).some(c => { const code = c.codePointAt(0)!; return code >= 0xd800 && code <= 0xdfff; }), 'Text contains invalid Unicode or a null character'),
+  origin: position, size: z.strictObject({ width: z.number().positive().max(1200), height: z.number().positive().max(675) }),
+  color: z.string().regex(/^#[0-9a-fA-F]{6}$/), fontSize: z.number().int().min(16).max(96),
+  font: z.literal('noto-sans-malayalam'),
+}).refine(t => t.origin.x + t.size.width <= 1200 + 1e-8 && t.origin.y + t.size.height <= 675 + 1e-8, 'Text outside scene');
+export type TeachingText = z.infer<typeof teachingTextSchema>;
+export const whiteboardV4Schema = z.strictObject({
+  ...whiteboardV3Schema.shape, schemaVersion: z.literal(4),
+  pages: z.array(pageSchema.extend({ shapes: z.array(teachingShapeSchema).max(10000), texts: z.array(teachingTextSchema).max(10000) })).min(1).max(MAX_WHITEBOARD_PAGES),
+  deletedPages: z.array(pageSchema.extend({ shapes: z.array(teachingShapeSchema).max(10000), texts: z.array(teachingTextSchema).max(10000) })).max(MAX_WHITEBOARD_PAGES),
+}).superRefine((doc, ctx) => {
+  const withoutText = (p: typeof doc.pages[number]) => ({ id: p.id, background: p.background, objects: p.objects, shapes: p.shapes });
+  if (!whiteboardV3Schema.safeParse({ ...doc, schemaVersion: 3, pages: doc.pages.map(withoutText), deletedPages: doc.deletedPages.map(withoutText) }).success)
+    ctx.addIssue({ code: 'custom', message: 'Invalid whiteboard pages' });
+  if ([...doc.pages, ...doc.deletedPages].some(p => { const objects = [...p.objects, ...p.shapes, ...p.texts]; return objects.length > 10000 || new Set(objects.map(o => o.id)).size !== objects.length; }))
+    ctx.addIssue({ code: 'custom', message: 'Duplicate object ID or page limit exceeded' });
+  if (new TextEncoder().encode(JSON.stringify(doc)).byteLength > MAX_SNAPSHOT_BYTES)
+    ctx.addIssue({ code: 'custom', message: 'Snapshot exceeds 2 MiB limit' });
+});
+export const documentSchema = z.union([documentV1Schema, whiteboardV2Schema, whiteboardV3Schema, whiteboardV4Schema]);
 export type SerializedV1 = z.infer<typeof documentV1Schema>;
-export type SerializedWhiteboard = z.infer<typeof whiteboardV2Schema> | z.infer<typeof whiteboardV3Schema>;
+export type SerializedWhiteboard = z.infer<typeof whiteboardV2Schema> | z.infer<typeof whiteboardV3Schema> | z.infer<typeof whiteboardV4Schema>;
 /** Deterministic page identity; never mutate the original or an outbox payload. */
 export function migrateWhiteboard(doc: SerializedV1): z.infer<typeof whiteboardV2Schema>;
 export function migrateWhiteboard(doc: SerializedV1 | SerializedWhiteboard): SerializedWhiteboard;

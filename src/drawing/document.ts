@@ -1,6 +1,6 @@
 import type { Stroke } from "../types/drawing";
 import { SCENE_BOUNDS, type SceneBounds } from "./scene";
-import { teachingShapeSchema, type TeachingShape } from '../../contracts';
+import { teachingTextSchema, type TeachingText, teachingShapeSchema, type TeachingShape } from '../../contracts';
 
 export interface DocumentOwner {
   sessionId: string;
@@ -19,19 +19,26 @@ export interface DrawingDocument {
   bounds: SceneBounds;
   objects: readonly Stroke[];
   shapes?: readonly TeachingShape[];
+  texts?: readonly TeachingText[];
 }
 export type DrawingOperation =
+  | { type: 'add-text'; object: TeachingText }
+  | { type: 'edit-text'; before: TeachingText; after: TeachingText }
+  | { type: 'delete-text'; object: TeachingText; index: number }
   | { type: "add-ink"; object: Stroke }
   | { type: 'add-shape'; object: TeachingShape }
   | { type: 'edit-shape'; before: TeachingShape; after: TeachingShape }
   | { type: 'delete-shape'; object: TeachingShape; index: number }
-  | { type: "clear-content"; removed: readonly Stroke[]; removedShapes?: readonly TeachingShape[] };
+  | { type: "clear-content"; removed: readonly Stroke[]; removedShapes?: readonly TeachingShape[]; removedTexts?: readonly TeachingText[] };
 export interface DocumentState {
   document: DrawingDocument;
   past: readonly DrawingOperation[];
   future: readonly DrawingOperation[];
 }
 export type DocumentAction =
+  | { type: 'commit-text'; text: TeachingText }
+  | { type: 'edit-text'; text: TeachingText }
+  | { type: 'delete-text'; id: string }
   | { type: "commit"; stroke: Stroke }
   | { type: 'commit-shape'; shape: TeachingShape }
   | { type: 'edit-shape'; shape: TeachingShape }
@@ -49,7 +56,7 @@ export function createDocument(owner: DocumentOwner, id: string): DocumentState 
   };
 }
 function apply(objects: readonly Stroke[], operation: DrawingOperation, reverse = false) {
-  if (operation.type === 'add-shape' || operation.type === 'edit-shape' || operation.type === 'delete-shape') return objects;
+  if (operation.type === 'add-text' || operation.type === 'edit-text' || operation.type === 'delete-text' || operation.type === 'add-shape' || operation.type === 'edit-shape' || operation.type === 'delete-shape') return objects;
   if (operation.type === "clear-content") return reverse ? operation.removed : [];
   return reverse ? objects.filter((object) => object.id !== operation.object.id)
     : [...objects, operation.object];
@@ -73,8 +80,26 @@ export function documentReducer(state: DocumentState, action: DocumentAction): D
     }
   } else {
     if (action.type === "clear") {
-      if (state.document.objects.length === 0 && !state.document.shapes?.length) return state;
-      operation = { type: "clear-content", removed: state.document.objects, removedShapes: state.document.shapes };
+      if (state.document.objects.length === 0 && !state.document.shapes?.length && !state.document.texts?.length) return state;
+      operation = { type: "clear-content", removed: state.document.objects, removedShapes: state.document.shapes, removedTexts: state.document.texts };
+    } else if (action.type === 'commit-text' || action.type === 'edit-text' || action.type === 'delete-text') {
+      if (!state.document.pageId) return state;
+      const id = action.type === 'delete-text' ? action.id : action.text.id;
+      const index = state.document.texts?.findIndex(t => t.id === id) ?? -1;
+      const before = state.document.texts?.[index];
+      if (action.type === 'delete-text') {
+        if (!before) return state;
+        operation = { type: 'delete-text', object: before, index };
+      } else {
+        const parsed = teachingTextSchema.safeParse(action.text); if (!parsed.success) return state;
+        if (action.type === 'commit-text') {
+          if ([...state.document.objects, ...(state.document.shapes ?? []), ...(state.document.texts ?? [])].some(o => o.id === id)) return state;
+          operation = { type: 'add-text', object: parsed.data };
+        } else {
+          if (!before || JSON.stringify(before) === JSON.stringify(parsed.data)) return state;
+          operation = { type: 'edit-text', before, after: parsed.data };
+        }
+      }
     } else if (action.type === 'edit-shape' || action.type === 'delete-shape') {
       if (!state.document.pageId) return state;
       const index = state.document.shapes?.findIndex(s => s.id === (action.type === 'edit-shape' ? action.shape.id : action.id)) ?? -1;
@@ -88,13 +113,13 @@ export function documentReducer(state: DocumentState, action: DocumentAction): D
       }
     } else if (action.type === 'commit-shape') {
       if (!state.document.pageId || !teachingShapeSchema.safeParse(action.shape).success ||
-          [...state.document.objects, ...(state.document.shapes ?? [])].some(o => o.id === action.shape.id)) return state;
+          [...state.document.objects, ...(state.document.shapes ?? []), ...(state.document.texts ?? [])].some(o => o.id === action.shape.id)) return state;
       operation = { type: 'add-shape', object: teachingShapeSchema.parse(action.shape) };
     } else {
       const stroke = action.stroke;
       if (stroke.points.length < 2 || stroke.points.length % 2 !== 0 ||
           !stroke.points.every(Number.isFinite) || !Number.isFinite(stroke.width) ||
-          stroke.width <= 0 || [...state.document.objects, ...(state.document.shapes ?? [])].some((object) => object.id === stroke.id)) return state;
+          stroke.width <= 0 || [...state.document.objects, ...(state.document.shapes ?? []), ...(state.document.texts ?? [])].some((object) => object.id === stroke.id)) return state;
       // History never owns the mutable input buffer.
       operation = { type: "add-ink", object: { ...stroke, points: [...stroke.points] } };
     }
@@ -119,8 +144,17 @@ export function documentReducer(state: DocumentState, action: DocumentAction): D
     if (action.type === 'undo') (shapes as TeachingShape[]).splice(operation.index, 0, removed);
     else shapes = shapes.filter(s => s.id !== removed.id);
   }
+  let texts = state.document.texts;
+  if (operation.type === 'clear-content') texts = action.type === 'undo' ? operation.removedTexts : texts ? [] : undefined;
+  else if (operation.type === 'add-text') texts = action.type === 'undo' ? texts?.filter(t => t.id !== operation.object.id) : [...(texts ?? []), operation.object];
+  else if (operation.type === 'edit-text') { const next = action.type === 'undo' ? operation.before : operation.after; texts = texts?.map(t => t.id === next.id ? next : t); }
+  else if (operation.type === 'delete-text') {
+    const restored = [...(texts ?? [])];
+    if (action.type === 'undo') { restored.splice(operation.index, 0, operation.object); texts = restored; }
+    else texts = restored.filter(t => t.id !== operation.object.id);
+  }
   return {
-    document: { ...state.document, ...(shapes ? { shapes } : {}), objects, revision: state.document.revision + 1 },
+    document: { ...state.document, ...(texts ? { texts } : {}), ...(shapes ? { shapes } : {}), objects, revision: state.document.revision + 1 },
     past, future,
   };
 }

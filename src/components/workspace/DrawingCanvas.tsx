@@ -1,6 +1,9 @@
-import { Stage, Layer, Line, Circle, Path } from "react-konva";
+import { Stage, Layer, Line, Circle, Path, Shape } from "react-konva";
 import type Konva from "konva";
 import { createPortal } from 'react-dom';
+import TextEditor from '../whiteboard/TextEditor';
+import type { TeachingText } from '../../../contracts';
+import { drawTeachingText, ensureBoardFont, hitText, moveText, TextMoveInteraction } from '../../drawing/teachingText';
 import { useCallback, useEffect, useRef, useState, type KeyboardEvent, type PointerEvent as ReactPointerEvent } from "react";
 import useDrawing from "../../store/useDrawing";
 import { ToolManager } from "../../drawing/ToolManager";
@@ -8,7 +11,7 @@ import { scenePoint } from "../../drawing/scene";
 import AnnotationLayer from "../layers/AnnotationLayer";
 import PageBackground from '../whiteboard/PageBackground';
 import { ShapeInteraction, shapePath } from '../../drawing/teachingShapes';
-import { pickHandle, pickShape, resizeShape, rotateShape, ShapeEditInteraction, shapeHandles, translateShape, type ShapeHandle } from '../../drawing/shapeEditing';
+import { hitShape, pickHandle, pickShape, resizeShape, rotateShape, ShapeEditInteraction, shapeHandles, translateShape, type ShapeHandle } from '../../drawing/shapeEditing';
 import ShapeSelection, { type ShapeSelectionRef } from '../whiteboard/ShapeSelection';
 
 export default function DrawingCanvas({ enabled = true, transparent = false, selectionActionsHost }: {
@@ -18,6 +21,10 @@ export default function DrawingCanvas({ enabled = true, transparent = false, sel
   const draftShape = useRef<Konva.Path>(null);
   const [shapes] = useState(() => new ShapeInteraction());
   const [editing] = useState(() => new ShapeEditInteraction());
+  const [textMoving] = useState(() => new TextMoveInteraction());
+  const [textDraft, setTextDraft] = useState<TeachingText | null>(null);
+  const [textEditor, setTextEditor] = useState<{ text: TeachingText; creating: boolean } | null>(null);
+  const [fontReady, setFontReady] = useState(false);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const selectionView = useRef<ShapeSelectionRef>(null);
   const shapeNodes = useRef(new Map<string, Konva.Path>());
@@ -30,14 +37,28 @@ export default function DrawingCanvas({ enabled = true, transparent = false, sel
   const [inputError, setInputError] = useState("");
   const {
     document, selectedTool, strokeColor, strokeWidth, eraserWidth,
-    commitStroke, commitShape, editShape, deleteShape, shapeType, shapeColor, shapeWidth, setInteracting, whiteboard, changePage,
+    saveText, deleteText, setTextEditing, setSelectedTool, commitStroke, commitShape, editShape, deleteShape, shapeType, shapeColor, shapeWidth, setInteracting, whiteboard, changePage,
   } = useDrawing();
   const selected = selectedTool === 'select' ? document.shapes?.find(s => s.id === selectedId) : undefined;
-  if (selectedId && !selected) setSelectedId(null);
+  const selectedText = selectedTool === 'select' ? document.texts?.find(t => t.id === selectedId) : undefined;
+  if (selectedId && !selected && !selectedText) setSelectedId(null);
   const scale = size.width / document.bounds.width;
+
+  const needsFont = Boolean(document.texts?.length) || selectedTool === 'text';
+  useEffect(() => {
+    if (!needsFont) return;
+    let active = true;
+    void ensureBoardFont().then(() => { if (active) setFontReady(true); })
+      .catch(() => { if (active) setInputError('Text font unavailable. Your text is preserved; reload to retry rendering.'); });
+    return () => { active = false; };
+  }, [needsFont]);
+  useEffect(() => () => setTextEditing(false), [setTextEditing]);
+  const closeTextEditor = () => { setTextEditor(null); setTextEditing(false); containerRef.current?.focus(); };
+  const openTextEditor = (text: TeachingText, creating: boolean) => { setTextEditor({ text, creating }); setTextEditing(true); };
 
   const paintDraft = useCallback(() => {
     frame.current = null;
+    setTextDraft(textMoving.draft);
     if (editingNode.current) editingNode.current.node.data(editingNode.current.data);
     editingNode.current = null;
     if (editing.draft) {
@@ -65,14 +86,15 @@ export default function DrawingCanvas({ enabled = true, transparent = false, sel
       }
     }
     draftLine.current?.getLayer()?.batchDraw();
-  }, [manager, shapes, editing]);
+  }, [manager, shapes, editing, textMoving]);
 
   const schedulePaint = () => {
     if (frame.current === null) frame.current = requestAnimationFrame(paintDraft);
   };
 
   const cancelInteraction = useCallback(() => {
-    const pointerId = manager.pointerId ?? shapes.pointerId ?? editing.pointerId;
+    const pointerId = manager.pointerId ?? shapes.pointerId ?? editing.pointerId ?? textMoving.pointerId;
+    textMoving.cancel();
     editing.cancel();
     shapes.cancel();
     manager.cancel();
@@ -82,7 +104,7 @@ export default function DrawingCanvas({ enabled = true, transparent = false, sel
     frame.current = null;
     paintDraft();
     setInteracting(false);
-  }, [manager, shapes, editing, paintDraft, setInteracting]);
+  }, [manager, shapes, editing, textMoving, paintDraft, setInteracting]);
 
   useEffect(() => {
     const element = containerRef.current;
@@ -113,17 +135,32 @@ export default function DrawingCanvas({ enabled = true, transparent = false, sel
   };
 
   const begin = (event: ReactPointerEvent<HTMLDivElement>) => {
-    if (!enabled || event.button !== 0 || !event.isPrimary || size.width <= 1 || size.height <= 1) return;
-    if (manager.pointerId !== null || shapes.pointerId !== null || editing.pointerId !== null) return;
+    if (textEditor || !enabled || event.button !== 0 || !event.isPrimary || size.width <= 1 || size.height <= 1) return;
+    if (manager.pointerId !== null || shapes.pointerId !== null || editing.pointerId !== null || textMoving.pointerId !== null) return;
+    if (selectedTool === 'text') {
+      if (transparent || !document.pageId) return;
+      event.preventDefault();
+      const p = point(event); const existing = document.texts?.findLast(t => hitText(t, p));
+      openTextEditor(existing ?? { id: crypto.randomUUID(), kind: 'text', text: '', font: 'noto-sans-malayalam', fontSize: 32,
+        color: strokeColor, origin: p, size: { width: 1, height: 1 } }, !existing);
+      return;
+    }
     if (selectedTool === 'select') {
       if (transparent || !document.pageId) return;
       const p = point(event);
+      // Visible handles own input before object bodies. Keep the active selection
+      // manipulable through overlaps; Escape/Next object allows selection switching.
       const handle = selected ? pickHandle(selected, p, scale) : undefined;
-      const hit = handle ? selected : pickShape(document.shapes ?? [], p, 12 / scale);
-      setSelectedId(hit?.id ?? null);
+      const selectedShapeHit = selected && hitShape(selected, p, 12 / scale);
+      const textHit = !handle && !selectedShapeHit
+        ? selectedText && hitText(selectedText, p) ? selectedText : document.texts?.findLast(t => hitText(t, p))
+        : undefined;
+      const hit = handle || selectedShapeHit ? selected : textHit ? undefined : pickShape(document.shapes ?? [], p, 12 / scale);
+      setSelectedId(textHit?.id ?? hit?.id ?? null);
       event.currentTarget.focus({ preventScroll: true });
       event.preventDefault();
-      if (!hit || !editing.begin(event.pointerId, hit, handle ?? 'move', p)) return;
+      if (textHit) { if (!textMoving.begin(event.pointerId, textHit, p)) return; }
+      else if (!hit || !editing.begin(event.pointerId, hit, handle ?? 'move', p)) return;
     } else if (selectedTool === 'shape') {
       if (transparent || !document.pageId || !shapes.begin(event.pointerId, crypto.randomUUID(), { shape: shapeType, color: shapeColor, width: shapeWidth }, point(event))) return;
     } else if (!manager.begin(event.pointerId,
@@ -143,6 +180,10 @@ export default function DrawingCanvas({ enabled = true, transparent = false, sel
   };
 
   const move = (event: ReactPointerEvent<HTMLDivElement>) => {
+    if (textMoving.pointerId === event.pointerId) {
+      if (event.pointerType === 'mouse' && event.buttons === 0) { cancelInteraction(); return; }
+      textMoving.move(event.pointerId, point(event)); schedulePaint(); return;
+    }
     if (editing.pointerId === event.pointerId) {
       if (event.pointerType === 'mouse' && event.buttons === 0) { cancelInteraction(); return; }
       editing.move(event.pointerId, point(event)); schedulePaint(); return;
@@ -160,6 +201,14 @@ export default function DrawingCanvas({ enabled = true, transparent = false, sel
   };
 
   const complete = (event: ReactPointerEvent<HTMLDivElement>) => {
+    if (textMoving.pointerId === event.pointerId) {
+      const text = textMoving.complete(event.pointerId, point(event));
+      if (event.currentTarget.hasPointerCapture(event.pointerId)) event.currentTarget.releasePointerCapture(event.pointerId);
+      if (frame.current !== null) cancelAnimationFrame(frame.current);
+      frame.current = null; paintDraft();
+      if (text) { const error = saveText(text, false); if (error) setInputError(error); }
+      setInteracting(false); return;
+    }
     if (editing.pointerId === event.pointerId) {
       const shape = editing.complete(event.pointerId, point(event));
       if (event.currentTarget.hasPointerCapture(event.pointerId)) event.currentTarget.releasePointerCapture(event.pointerId);
@@ -186,10 +235,10 @@ export default function DrawingCanvas({ enabled = true, transparent = false, sel
     setInteracting(false);
   };
 
-  const interacting = () => manager.pointerId !== null || shapes.pointerId !== null || editing.pointerId !== null;
+  const interacting = () => manager.pointerId !== null || shapes.pointerId !== null || editing.pointerId !== null || textMoving.pointerId !== null || Boolean(textEditor);
   const removeSelected = () => {
-    if (!selected || interacting()) return;
-    deleteShape(selected.id); setSelectedId(null); containerRef.current?.focus();
+    if ((!selected && !selectedText) || interacting()) return;
+    if (selectedText) deleteText(selectedText.id); else if (selected) deleteShape(selected.id); setSelectedId(null); containerRef.current?.focus();
   };
   const handleKey = (handle: ShapeHandle, event: KeyboardEvent<SVGCircleElement>) => {
     if (!selected || interacting() || !['ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown'].includes(event.key)) return;
@@ -204,23 +253,25 @@ export default function DrawingCanvas({ enabled = true, transparent = false, sel
     <div ref={containerRef} role="region" aria-label={transparent ? "Content annotation surface" : "Whiteboard drawing surface"} tabIndex={enabled ? 0 : -1}
       data-document-id={document.id} data-session-id={document.owner.sessionId}
       data-page-id={document.pageId} data-background={document.background}
-      data-selected-shape={selected?.id ?? ''}
+      data-selected-shape={selected?.id ?? ''} data-selected-text={selectedText?.id ?? ''} data-text-count={document.texts?.length ?? 0} data-text-font-ready={fontReady}
       data-shape-count={document.shapes?.length ?? 0} data-ink-count={document.objects.length} data-revision={document.revision}
       data-input-owner={enabled ? "ink" : "content"}
       className="absolute inset-0 overflow-hidden outline-none focus-visible:ring-2 focus-visible:ring-teal-600"
       style={{ touchAction: enabled ? "none" : "auto", userSelect: "none", pointerEvents: enabled ? "auto" : "none", background: transparent ? "transparent" : "white" }}
       onPointerDown={begin} onPointerMove={move} onPointerUp={complete}
-      onPointerCancel={(event) => { if (manager.pointerId === event.pointerId || shapes.pointerId === event.pointerId || editing.pointerId === event.pointerId) cancelInteraction(); }}
-      onLostPointerCapture={(event) => { if (manager.pointerId === event.pointerId || shapes.pointerId === event.pointerId || editing.pointerId === event.pointerId) cancelInteraction(); }}
+      onPointerCancel={(event) => { if (manager.pointerId === event.pointerId || shapes.pointerId === event.pointerId || editing.pointerId === event.pointerId || textMoving.pointerId === event.pointerId) cancelInteraction(); }}
+      onLostPointerCapture={(event) => { if (manager.pointerId === event.pointerId || shapes.pointerId === event.pointerId || editing.pointerId === event.pointerId || textMoving.pointerId === event.pointerId) cancelInteraction(); }}
       onKeyDown={(event) => {
+        if (textEditor) return;
         if (event.key === 'Escape') { event.stopPropagation(); cancelInteraction(); setSelectedId(null); }
-        if (event.target !== event.currentTarget || interacting() || !selected) return;
+        if (event.target !== event.currentTarget || interacting() || (!selected && !selectedText)) return;
         if (event.key === 'Delete' || event.key === 'Backspace') { event.preventDefault(); removeSelected(); }
         if (event.key.startsWith('Arrow')) {
           event.preventDefault(); const step = event.shiftKey ? 1 : 10;
-          const next = translateShape(selected, { x: event.key === 'ArrowLeft' ? -step : event.key === 'ArrowRight' ? step : 0,
-            y: event.key === 'ArrowUp' ? -step : event.key === 'ArrowDown' ? step : 0 });
-          if (next) editShape(next);
+          const delta = { x: event.key === 'ArrowLeft' ? -step : event.key === 'ArrowRight' ? step : 0,
+            y: event.key === 'ArrowUp' ? -step : event.key === 'ArrowDown' ? step : 0 };
+          if (selectedText) { const error = saveText(moveText(selectedText, delta), false); if (error) setInputError(error); }
+          else if (selected) { const next = translateShape(selected, delta); if (next) editShape(next); }
         }
       }}>
       {!transparent && <PageBackground background={document.background} />}
@@ -235,18 +286,35 @@ export default function DrawingCanvas({ enabled = true, transparent = false, sel
           {document.shapes?.map(shape => <Path key={shape.id} ref={node => { if (node) shapeNodes.current.set(shape.id, node); else shapeNodes.current.delete(shape.id); }} data={shapePath(shape)} stroke={shape.color} strokeWidth={shape.width} lineCap="round" lineJoin="round" listening={false} />)}
           <Path ref={draftShape} visible={false} lineCap="round" lineJoin="round" listening={false} />
         </Layer>}
+        {!transparent && fontReady && <Layer listening={false} scaleX={scale} scaleY={scale}>
+          {document.texts?.map(text => <Shape key={text.id} listening={false} sceneFunc={ctx => drawTeachingText(ctx._context, textDraft?.id === text.id ? textDraft : text)} />)}
+        </Layer>}
       </Stage>
+      {selectedText && <svg className="wb-selection" viewBox="0 0 1200 675" aria-label="Selected text outline">
+        <rect x={(textDraft ?? selectedText).origin.x} y={(textDraft ?? selectedText).origin.y} width={selectedText.size.width} height={selectedText.size.height}
+          fill="none" stroke="#007568" strokeWidth={2 / scale} strokeDasharray={String(6 / scale)} />
+      </svg>}
       {selected && <ShapeSelection key={selected.id} ref={selectionView} shape={selected} scale={scale} onHandleKey={handleKey} />}
       {/* Keep selection local to this page; only its actions render outside the drawable scene. */}
-      {!transparent && selectedTool === 'select' && selectionActionsHost && createPortal(<div className="wb-selection-actions" role="group" aria-label="Selected object actions" onPointerDown={event => event.stopPropagation()}>
+      {!transparent && selectedTool === 'select' && !textEditor && selectionActionsHost && createPortal(<div className="wb-selection-actions" role="group" aria-label="Selected object actions" onPointerDown={event => event.stopPropagation()}>
         <button className="workspace-button" disabled={!document.shapes?.length || interacting()} onClick={() => {
           const list = document.shapes ?? []; const index = list.findIndex(s => s.id === selectedId);
           setSelectedId(list[(index + 1) % list.length]?.id ?? null); containerRef.current?.focus();
         }}>Next shape</button>
-        {selected ? <><button className="workspace-button" disabled={interacting()} onClick={removeSelected}>Delete shape</button>
+        {Boolean(document.texts?.length) && <button className="workspace-button" disabled={interacting()} onClick={() => {
+          const list = document.texts ?? []; const index = list.findIndex(t => t.id === selectedId); setSelectedId(list[(index + 1) % list.length]?.id ?? null); containerRef.current?.focus();
+        }}>Next text</button>}
+        {selectedText ? <><button className="workspace-button" disabled={interacting()} onClick={() => openTextEditor(selectedText, false)}>Edit text</button>
+          <button className="workspace-button" disabled={interacting()} onClick={removeSelected}>Delete text</button><span>Text selected<small>Drag or arrow keys to move</small></span></>
+        : selected ? <><button className="workspace-button" disabled={interacting()} onClick={removeSelected}>Delete shape</button>
           <span>{selected.shape} selected <small>Drag to move · Handles resize / rotate<br />Arrow keys move · Tab to handles · Delete removes</small></span></>
-          : <span>Tap a shape to select it</span>}
+          : <span>Tap an object to select it</span>}
       </div>, selectionActionsHost)}
+      {textEditor && selectionActionsHost && createPortal(<TextEditor initial={textEditor.text} onCancel={closeTextEditor} onConfirm={text => {
+        const error = saveText(text, textEditor.creating); if (error) return error;
+        closeTextEditor(); setSelectedTool('select'); setSelectedId(text.id);
+      }} />, selectionActionsHost)}
+      {selectedTool === 'text' && !textEditor && selectionActionsHost && createPortal(<p className="wb-text-hint">Tap the board to add text, or tap existing text to edit.</p>, selectionActionsHost)}
       {inputError && <p role="alert" className="absolute bottom-4 left-4 bg-white p-3 text-red-700">{inputError}</p>}
       {!transparent && whiteboard.error && <div role="alert" className="wb-capacity" onPointerDown={event => event.stopPropagation()}>
         <span>{whiteboard.error}</span><button className="workspace-button" disabled={interacting()} onClick={() => changePage({ type: 'dismiss-error' })}>Dismiss</button>

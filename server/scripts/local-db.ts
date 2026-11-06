@@ -7,12 +7,14 @@ const url = new URL(config.DATABASE_URL);
 if (url.pathname !== '/meerkats_dev') throw new Error('Local development launcher requires meerkats_dev');
 const directory = resolve('.data/development');
 const postgres = new EmbeddedPostgres({ databaseDir: directory, user: decodeURIComponent(url.username), password: decodeURIComponent(url.password),
-  port: Number(url.port), persistent: true, authMethod: 'scram-sha-256', postgresFlags: ['-h', '127.0.0.1'], onLog: () => {}, onError: () => {} });
+  port: Number(url.port), persistent: true, authMethod: 'scram-sha-256', initdbFlags: ['--encoding=UTF8'], postgresFlags: ['-h', '127.0.0.1'], onLog: () => {}, onError: () => {} });
 if (!existsSync(resolve(directory, 'PG_VERSION'))) await postgres.initialise();
 await postgres.start();
 const client = postgres.getPgClient(); await client.connect();
 const found = await client.query("SELECT 1 FROM pg_database WHERE datname = 'meerkats_dev'");
 if (!found.rowCount) await client.query('CREATE DATABASE meerkats_dev');
+const encoding = await client.query("SELECT pg_encoding_to_char(encoding) AS encoding FROM pg_database WHERE datname = 'meerkats_dev'");
+if (encoding.rows[0]?.encoding !== 'UTF8') console.warn('Existing development database is not UTF8: Malayalam synchronization is unavailable. Data is unchanged. Back up and restore into a separate UTF8 database before enabling multilingual saves; see docs/wb-2b-3.md.');
 await client.end();
 console.log('Development PostgreSQL ready on loopback. Data retained in server/.data/development. Ctrl+C to stop.');
 for (const signal of ['SIGINT', 'SIGTERM'] as const) process.once(signal, () => { void postgres.stop(); });

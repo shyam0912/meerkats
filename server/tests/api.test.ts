@@ -10,7 +10,7 @@ import { applyMigrations } from '../src/db/migrate.js';
 import { seedIdentity } from '../src/db/seed.js';
 import { parseEnv } from '../src/config/env.js';
 import { buildApp } from '../src/app.js';
-import { migrateWhiteboard, whiteboardV3Schema, type SaveRequest, type SerializedV1 } from '../../contracts/index.js';
+import { migrateWhiteboard, whiteboardV3Schema, whiteboardV4Schema, type SaveRequest, type SerializedV1 } from '../../contracts/index.js';
 import { memberships } from '../src/db/schema.js';
 import { eq } from 'drizzle-orm';
 import { seedCatalog, publishVersion } from '../src/modules/catalog.js';
@@ -46,7 +46,7 @@ beforeAll(async () => {
   const password = randomUUID();
   // Unique disposable cluster; never reads DATABASE_URL or touches the development database.
   postgres = new EmbeddedPostgres({ databaseDir: directory, user: 'postgres', password, port, persistent: true,
-    authMethod: 'scram-sha-256', postgresFlags: ['-h', '127.0.0.1'], onLog: () => {}, onError: () => {} });
+    authMethod: 'scram-sha-256', initdbFlags: ['--encoding=UTF8'], postgresFlags: ['-h', '127.0.0.1'], onLog: () => {}, onError: () => {} });
   await postgres.initialise(); await postgres.start(); await postgres.createDatabase('meerkats_test');
   const url = `postgresql://postgres:${password}@127.0.0.1:${port}/meerkats_test`;
   await applyMigrations(url); await applyMigrations(url);
@@ -66,6 +66,25 @@ afterAll(async () => {
 });
 
 describe('real PostgreSQL API', () => {
+  it('roundtrips exact v4 Unicode and protects it from old-version writes while retaining old retries', async () => {
+    const old = saveBody((await create()).id); expect((await put(old)).statusCode).toBe(200);
+    const migrated = migrateWhiteboard(old.document);
+    const text = { id: randomUUID(), kind: 'text', text: 'English മലയാളം\nക്ഷേത്രം, ക്ക — H₂O', font: 'noto-sans-malayalam', fontSize: 32,
+      color: '#214f45', origin: { x: 50, y: 50 }, size: { width: 400, height: 116 } };
+    const document = whiteboardV4Schema.parse({ ...migrated, schemaVersion: 4, pages: migrated.pages.map(p => ({ ...p, shapes: [], texts: [text] })), deletedPages: [] });
+    const save = { mutationId: randomUUID(), baseServerRevision: 1, document };
+    expect((await put(save)).statusCode).toBe(200); expect((await put(old)).statusCode).toBe(200);
+    expect((await put({ ...old, mutationId: randomUUID(), baseServerRevision: 2 })).statusCode).toBe(409);
+    expect((await put({ ...save, mutationId: randomUUID(), baseServerRevision: 1 })).statusCode).toBe(409);
+    const recovered = (await app.inject({ url: `/api/v1/sessions/${document.owner.sessionId}` })).json();
+    expect(recovered.documents.find((d: { document: { id: string } }) => d.document.id === document.id).document).toEqual(document);
+    expect((await put({ ...save, mutationId: randomUUID(), baseServerRevision: 2, document: { ...document, schemaVersion: 5 } } as unknown as SaveRequest)).statusCode).toBe(400);
+    expect((await put({ ...save, mutationId: randomUUID(), baseServerRevision: 2, document: { ...document,
+      pages: document.pages.map(p => ({ ...p, texts: [{ ...p.texts[0], font: 'untrusted-font' }] })) } } as unknown as SaveRequest)).statusCode).toBe(400);
+    for (const value of ['null\0character', 'unpaired\ud800'])
+      expect((await put({ ...save, mutationId: randomUUID(), baseServerRevision: 2, document: { ...document,
+        pages: document.pages.map(p => ({ ...p, texts: [{ ...p.texts[0], text: value }] })) } } as unknown as SaveRequest)).statusCode).toBe(400);
+  });
   it('saves rotated v3 boxes without rewriting earlier retries and rejects stale pre-edit overwrites', async () => {
     const legacy = saveBody((await create()).id); const v2 = migrateWhiteboard(legacy.document);
     const shape = { id: randomUUID(), kind: 'shape', shape: 'rectangle', origin: { x: 200, y: 200 }, size: { width: 200, height: 150 }, color: '#225eaf', width: 8 };
