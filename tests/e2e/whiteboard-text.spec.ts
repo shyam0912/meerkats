@@ -22,7 +22,10 @@ for (const viewport of [{ width: 1920, height: 1080 }, { width: 1280, height: 72
     await button(page, 'Edit text').click();
     await page.getByRole('textbox', { name: 'Board text' }).fill(mixed + '\nScience — ശാസ്ത്രം');
     await page.getByLabel('Text colour').fill('#225eaf'); await page.getByLabel('Font size').selectOption('40');
-    await expect(button(page, 'Pen')).toBeDisabled(); await expect(button(page, 'Undo')).toBeDisabled();
+    for (const name of ['Pen', 'Undo']) {
+      const tool = page.locator('.drawing-toolbar').getByText(name, { exact: true });
+      await expect(tool).toBeDisabled(); await expect(tool).toBeHidden();
+    }
     await expect(page.getByRole('status')).toHaveText('Text draft · Apply to save');
     expect(await page.evaluate(() => document.documentElement.scrollHeight > innerHeight || document.documentElement.scrollWidth > innerWidth)).toBe(false);
     await page.screenshot({ path: info.outputPath(`text-editor-${viewport.width}.png`) });

@@ -8,6 +8,7 @@ import { useCallback, useEffect, useRef, useState, type KeyboardEvent, type Poin
 import useDrawing from "../../store/useDrawing";
 import { ToolManager } from "../../drawing/ToolManager";
 import { scenePoint } from "../../drawing/scene";
+import { duplicateObject } from '../../drawing/duplicateObject';
 import AnnotationLayer from "../layers/AnnotationLayer";
 import PageBackground from '../whiteboard/PageBackground';
 import { ShapeInteraction, shapePath } from '../../drawing/teachingShapes';
@@ -26,6 +27,7 @@ export default function DrawingCanvas({ enabled = true, transparent = false, sel
   const [textEditor, setTextEditor] = useState<{ text: TeachingText; creating: boolean } | null>(null);
   const [fontReady, setFontReady] = useState(false);
   const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [requestedCopy, setRequestedCopy] = useState<string | null>(null);
   const selectionView = useRef<ShapeSelectionRef>(null);
   const shapeNodes = useRef(new Map<string, Konva.Path>());
   const editingNode = useRef<{ node: Konva.Path; data: string } | null>(null);
@@ -37,11 +39,16 @@ export default function DrawingCanvas({ enabled = true, transparent = false, sel
   const [inputError, setInputError] = useState("");
   const {
     document, selectedTool, strokeColor, strokeWidth, eraserWidth,
-    saveText, deleteText, setTextEditing, setSelectedTool, commitStroke, commitShape, editShape, deleteShape, shapeType, shapeColor, shapeWidth, setInteracting, whiteboard, changePage,
+    saveText, deleteText, setTextEditing, setSelectedTool, commitStroke, commitObject, editShape, deleteShape, shapeType, shapeColor, shapeWidth, setInteracting, whiteboard, changePage,
   } = useDrawing();
   const selected = selectedTool === 'select' ? document.shapes?.find(s => s.id === selectedId) : undefined;
   const selectedText = selectedTool === 'select' ? document.texts?.find(t => t.id === selectedId) : undefined;
   if (selectedId && !selected && !selectedText) setSelectedId(null);
+  if (requestedCopy) {
+    // The reducer can reject a copy at capacity. Select only an accepted object.
+    if (document.shapes?.some(s => s.id === requestedCopy) || document.texts?.some(t => t.id === requestedCopy)) setSelectedId(requestedCopy);
+    setRequestedCopy(null);
+  }
   const scale = size.width / document.bounds.width;
 
   const needsFont = Boolean(document.texts?.length) || selectedTool === 'text';
@@ -222,7 +229,7 @@ export default function DrawingCanvas({ enabled = true, transparent = false, sel
       if (event.currentTarget.hasPointerCapture(event.pointerId)) event.currentTarget.releasePointerCapture(event.pointerId);
       if (frame.current !== null) cancelAnimationFrame(frame.current);
       frame.current = null; paintDraft();
-      if (shape) commitShape(shape);
+      if (shape) commitObject(shape);
       setInteracting(false); return;
     }
     const stroke = manager.complete(event.pointerId, point(event));
@@ -236,6 +243,14 @@ export default function DrawingCanvas({ enabled = true, transparent = false, sel
   };
 
   const interacting = () => manager.pointerId !== null || shapes.pointerId !== null || editing.pointerId !== null || textMoving.pointerId !== null || Boolean(textEditor);
+  const duplicateSelected = () => {
+    const source = selectedText ?? selected;
+    if (!source || interacting()) return;
+    const copy = duplicateObject(source, crypto.randomUUID());
+    commitObject(copy);
+    setRequestedCopy(copy.id);
+    containerRef.current?.focus({ preventScroll: true });
+  };
   const removeSelected = () => {
     if ((!selected && !selectedText) || interacting()) return;
     if (selectedText) deleteText(selectedText.id); else if (selected) deleteShape(selected.id); setSelectedId(null); containerRef.current?.focus();
@@ -297,6 +312,7 @@ export default function DrawingCanvas({ enabled = true, transparent = false, sel
       {selected && <ShapeSelection key={selected.id} ref={selectionView} shape={selected} scale={scale} onHandleKey={handleKey} />}
       {/* Keep selection local to this page; only its actions render outside the drawable scene. */}
       {!transparent && selectedTool === 'select' && !textEditor && selectionActionsHost && createPortal(<div className="wb-selection-actions" role="group" aria-label="Selected object actions" onPointerDown={event => event.stopPropagation()}>
+        <span className="wb-selection-label">{selectedText ? 'Text selected' : selected ? selected.shape + ' selected' : 'Select an object'}</span>
         <button className="workspace-button" disabled={!document.shapes?.length || interacting()} onClick={() => {
           const list = document.shapes ?? []; const index = list.findIndex(s => s.id === selectedId);
           setSelectedId(list[(index + 1) % list.length]?.id ?? null); containerRef.current?.focus();
@@ -304,11 +320,11 @@ export default function DrawingCanvas({ enabled = true, transparent = false, sel
         {Boolean(document.texts?.length) && <button className="workspace-button" disabled={interacting()} onClick={() => {
           const list = document.texts ?? []; const index = list.findIndex(t => t.id === selectedId); setSelectedId(list[(index + 1) % list.length]?.id ?? null); containerRef.current?.focus();
         }}>Next text</button>}
-        {selectedText ? <><button className="workspace-button" disabled={interacting()} onClick={() => openTextEditor(selectedText, false)}>Edit text</button>
-          <button className="workspace-button" disabled={interacting()} onClick={removeSelected}>Delete text</button><span>Text selected<small>Drag or arrow keys to move</small></span></>
-        : selected ? <><button className="workspace-button" disabled={interacting()} onClick={removeSelected}>Delete shape</button>
-          <span>{selected.shape} selected <small>Drag to move · Handles resize / rotate<br />Arrow keys move · Tab to handles · Delete removes</small></span></>
-          : <span>Tap an object to select it</span>}
+        {selectedText && <button className="workspace-button" disabled={interacting()} onClick={() => openTextEditor(selectedText, false)}>Edit text</button>}
+        {(selected || selectedText) && <>
+          <button className="workspace-button" disabled={interacting()} onClick={duplicateSelected}>Duplicate</button>
+          <button className="workspace-button" disabled={interacting()} onClick={removeSelected}>{selectedText ? 'Delete text' : 'Delete shape'}</button>
+        </>}
       </div>, selectionActionsHost)}
       {textEditor && selectionActionsHost && createPortal(<TextEditor initial={textEditor.text} onCancel={closeTextEditor} onConfirm={text => {
         const error = saveText(text, textEditor.creating); if (error) return error;

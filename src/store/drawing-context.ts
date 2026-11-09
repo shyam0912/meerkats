@@ -25,7 +25,7 @@ export interface DrawingContextType {
   setShapeType: (type: import('../../contracts').TeachingShapeType) => void;
   setShapeColor: (color: string) => void;
   setShapeWidth: (width: number) => void;
-  commitShape: (shape: import('../../contracts').TeachingShape) => void;
+  commitObject: (object: import('../../contracts').TeachingShape | import('../../contracts').TeachingText) => void;
   editShape: (shape: import('../../contracts').TeachingShape) => void;
   deleteShape: (id: string) => void;
   saveText: (text: import('../../contracts').TeachingText, creating: boolean) => string | undefined;

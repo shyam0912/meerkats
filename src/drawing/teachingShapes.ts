@@ -21,16 +21,25 @@ export function createShape(id: string, settings: ShapeSettings, start: Point, e
   return teachingShapeSchema.safeParse(shape).success ? shape : null;
 }
 
+export function arrowHead(start: Point, end: Point, width: number) {
+  const length = Math.hypot(end.x - start.x, end.y - start.y);
+  const head = Math.min(length * .3, Math.max(14, width * 3));
+  const ux = (end.x - start.x) / length;
+  const uy = (end.y - start.y) / length;
+  return ([-1, 1] as const).map(side => ({
+    x: end.x - head * ux + side * head * .5 * uy,
+    y: end.y - head * uy - side * head * .5 * ux,
+  }));
+}
+
 /** Shared vector geometry for live rendering, thumbnails and PNG export. No ink masks apply here. */
 export function shapePath(s: TeachingShape): string {
   if (s.shape === 'line' || s.shape === 'arrow') {
     const { start: a, end: b } = s;
     const line = `M ${a.x} ${a.y} L ${b.x} ${b.y}`;
     if (s.shape === 'line') return line;
-    const length = Math.hypot(b.x - a.x, b.y - a.y);
-    const head = Math.min(length * .3, Math.max(14, s.width * 3));
-    const ux = (b.x - a.x) / length; const uy = (b.y - a.y) / length;
-    return `${line} M ${b.x - head * ux - head * .5 * uy} ${b.y - head * uy + head * .5 * ux} L ${b.x} ${b.y} L ${b.x - head * ux + head * .5 * uy} ${b.y - head * uy - head * .5 * ux}`;
+    const [left, right] = arrowHead(a, b, s.width);
+    return `${line} M ${left!.x} ${left!.y} L ${b.x} ${b.y} L ${right!.x} ${right!.y}`;
   }
   if (s.shape === 'circle') {
     const { x, y } = s.center; const r = s.radius;

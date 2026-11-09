@@ -35,7 +35,7 @@ export default function TextEditor({ initial, onConfirm, onCancel }: {
       }}>Apply text</button>
       <button className="workspace-button" onClick={onCancel}>Cancel text</button>
     </div>
-    <p>{composing ? 'Finish keyboard composition before applying.' : 'Draft — not saved until Apply text. Enter adds a line; Escape cancels.'}</p>
+    {composing && <p>Finish keyboard composition before applying.</p>}
     {error && <p role="alert">{error}</p>}
   </section>;
 }

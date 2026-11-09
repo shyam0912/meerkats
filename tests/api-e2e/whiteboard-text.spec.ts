@@ -19,5 +19,17 @@ test('v4 Unicode text edits sync and stay editable after fresh-browser recovery'
   await fresh.getByRole('textbox', { name: 'Board text' }).fill(value + '\nEdited'); await button(fresh, 'Apply text').click();
   const edited = await remote(fresh); expect(edited[0]!.id).toBe(original[0]!.id); expect(edited[0]!.text).toBe(value + '\nEdited');
   await button(fresh, 'Undo').click(); expect(await remote(fresh)).toEqual(original); await button(fresh, 'Redo').click(); expect(await remote(fresh)).toEqual(edited);
+  await button(fresh, 'Next text').click(); await button(fresh, 'Duplicate').click();
+  const copies = await remote(fresh); expect(copies).toHaveLength(2); expect(copies[0]).toEqual(edited[0]);
+  const copy = copies[1]!; expect(copy.id).not.toBe(edited[0]!.id);
+  expect(copy).toEqual({ ...edited[0], id: copy.id, origin: { x: edited[0]!.origin.x + 24, y: edited[0]!.origin.y + 24 } });
   await context.close();
+  const recovered = await browser.newContext();
+  try {
+    const restored = await recovered.newPage(); await restored.goto(url);
+    await expect(surface(restored)).toHaveAttribute('data-text-count', '2');
+    await button(restored, 'Select').click(); await button(restored, 'Next text').click(); await button(restored, 'Next text').click();
+    await expect(surface(restored)).toHaveAttribute('data-selected-text', copy.id);
+    await button(restored, 'Edit text').click(); await expect(restored.getByRole('textbox', { name: 'Board text' })).toHaveValue(copy.text);
+  } finally { await recovered.close(); }
 });

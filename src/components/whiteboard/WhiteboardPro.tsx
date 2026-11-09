@@ -71,8 +71,8 @@ export default function WhiteboardPro() {
       ? 'Your latest work may not be saved. Keep this board open and export a PNG before leaving. Undo history is not restored after reload.'
       : 'Work is saved on this device. Server synchronization needs attention; keep using this browser for recovery.'}</aside>}
     <TeachingSurface selection={selection} onSelect={setSelection} selectionActionsHost={selectionActionsHost} />
-    <footer className="wb-controls" aria-label="Whiteboard controls"><DrawingToolbar pro /><PageNavigator />
-      {!focused && <span className="wb-footer-note">A clear space to think.</span>}
+    <footer className={`wb-controls${isTextEditing ? ' wb-editing' : ''}`} aria-label="Whiteboard controls">
+      <div className="wb-primary-tools" hidden={isTextEditing}><DrawingToolbar pro /><PageNavigator /></div>
       <div ref={setSelectionActionsHost} className="wb-selection-slot" hidden={selectedTool !== 'select' && selectedTool !== 'text'} />
     </footer>
     {message && <div className="wb-message" role="alert">{message}<button className="workspace-button" aria-label="Dismiss export message" disabled={isInteracting} onClick={() => setMessage('')}>Close</button></div>}
