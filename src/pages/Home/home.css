@@ -58,3 +58,5 @@
   .labs-subjects { flex-wrap: wrap; justify-content: flex-start; }
   .home-classroom, .home-whiteboard { height: 250px; padding: 24px; }
 }
+.home-release { margin-inline-start: auto; font-size: 14px; letter-spacing: normal; font-weight: 500; color: var(--mk-muted); }
+.home-storage-note { margin: 12px 0 0; font-size: 16px; line-height: 1.4; color: var(--mk-muted); }

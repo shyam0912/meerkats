@@ -1,4 +1,5 @@
 import { test, expect, type Page } from "@playwright/test";
+import { SCENE_BOUNDS } from "../../src/drawing/scene";
 
 const surface = (page: Page) => page.getByRole("region", { name: "Whiteboard drawing surface" });
 async function bounds(page: Page) {
@@ -14,8 +15,12 @@ async function stroke(page: Page, y = 180) {
   await page.mouse.up();
 }
 async function pixel(page: Page, x: number, y: number) {
-  return surface(page).locator("canvas").evaluate((canvas: HTMLCanvasElement, point) =>
-    Array.from(canvas.getContext("2d")!.getImageData(point.x, point.y, 1, 1).data), { x, y });
+  return surface(page).locator("canvas").evaluate((canvas: HTMLCanvasElement, point) => {
+    const rect = canvas.getBoundingClientRect();
+    return Array.from(canvas.getContext("2d")!.getImageData(
+      Math.floor(point.x * canvas.width / rect.width), Math.floor(point.y * canvas.height / rect.height), 1, 1
+    ).data);
+  }, { x, y });
 }
 test.beforeEach(async ({ page }) => {
   await page.goto("/");
@@ -117,7 +122,7 @@ test("Clear Cancel, Escape, Confirm, Undo and Redo; modal focus", async ({ page 
   await expect(page.getByRole("button", { name: "Clear", exact: true })).toBeDisabled();
 });
 
-test("dots, color, width, live eraser compositing and tool switching", async ({ page }) => {
+async function checkPenAndEraser(page: Page) {
   await page.getByRole("button", { name: "Ink settings", exact: true }).click();
   await page.getByLabel("Pen color").fill("#ff0000");
   await page.getByLabel("Stroke width").fill("15");
@@ -127,7 +132,17 @@ test("dots, color, width, live eraser compositing and tool switching", async ({ 
   await page.mouse.click(box.x + 100, box.y + 100);
   await expect.poll(() => pixel(page, 100, 100)).toEqual([255, 0, 0, 255]);
   await stroke(page);
-  await expect.poll(() => pixel(page, 300, 185)).toEqual([255, 0, 0, 255]);
+  await expect.poll(() => pixel(page, 300, 180)).toEqual([255, 0, 0, 255]);
+  // The column crosses only the horizontal stroke. Fractional alpha counts
+  // antialiased edges regardless of the fitted scene size or device pixel ratio.
+  const measuredWidth = await surface(page).locator("canvas").evaluate((canvas: HTMLCanvasElement, sceneHeight) => {
+    const x = Math.floor(300 * canvas.width / canvas.getBoundingClientRect().width);
+    const { data } = canvas.getContext("2d")!.getImageData(x, 0, 1, canvas.height);
+    let coverage = 0;
+    for (let alpha = 3; alpha < data.length; alpha += 4) coverage += data[alpha]! / 255;
+    return coverage * sceneHeight / canvas.height;
+  }, SCENE_BOUNDS.height);
+  expect(Math.abs(measuredWidth - 15)).toBeLessThan(0.5);
   await page.getByRole("button", { name: "Eraser", exact: true }).click();
   await page.mouse.move(box.x + 300, box.y + 150);
   await page.mouse.down();
@@ -137,6 +152,7 @@ test("dots, color, width, live eraser compositing and tool switching", async ({ 
   await expect(surface(page)).toHaveAttribute("data-ink-count", "2");
   await page.mouse.up();
   await expect(surface(page)).toHaveAttribute("data-ink-count", "3");
+  await expect.poll(() => pixel(page, 240, 180)).toEqual([255, 0, 0, 255]);
   await expect.poll(async () => (await pixel(page, 300, 180))[3]).toBe(0);
   await page.getByRole("button", { name: "Undo", exact: true }).click();
   await expect.poll(async () => (await pixel(page, 300, 180))[3]).toBe(255);
@@ -147,7 +163,13 @@ test("dots, color, width, live eraser compositing and tool switching", async ({ 
   await page.getByRole("button", { name: "Pen", exact: true }).click();
   await stroke(page, 260);
   await expect(surface(page)).toHaveAttribute("data-ink-count", "4");
-});
+}
+for (const [width, height] of [[1920, 1080], [1280, 720], [1024, 600]] as const) {
+  test(`dots, color, width, live eraser compositing and tool switching at ${width}×${height}`, async ({ page }) => {
+    await page.setViewportSize({ width, height });
+    await checkPenAndEraser(page);
+  });
+}
 
 test("continuous curve survives provider rerender; draft is not history", async ({ page }) => {
   const box = await bounds(page);

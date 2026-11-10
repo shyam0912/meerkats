@@ -50,6 +50,7 @@ export default function Home() {
           <path d="M5 27V14a6 6 0 0 1 12 0v13M19 27V14a6 6 0 0 1 12 0v13" />
           <circle cx="18" cy="5" r="3" />
         </svg><span>meerkats</span>
+        {import.meta.env.MODE === 'demo' && <small className="home-release">Demo Version · {import.meta.env.VITE_DEMO_RELEASE}</small>}
       </header>
       <h1 className="home-heading">Where shall we begin?</h1>
       <nav className="home-destinations" aria-label="Teaching destinations">
@@ -78,6 +79,7 @@ export default function Home() {
           </span>)}</span>
         </button>
       </nav>
+      {import.meta.env.MODE === 'demo' && <p className="home-storage-note">Boards are saved only in this browser. Clearing site data erases them.</p>}
     </div>
   </main>;
 }
