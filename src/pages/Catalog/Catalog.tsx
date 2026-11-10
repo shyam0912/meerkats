@@ -48,7 +48,7 @@ function Discovery({ data, parentId, standard, internal }: { data: CatalogData; 
   const planned = parentId === null ? plannedStandard(standard) : null;
   const invalid = view.invalid || (standard !== null && (!planned || parentId !== null));
   const schoolRoot = !internal && parentId === null && standard === null;
-  const path = (id: string | null) => catalogPath(id) + (internal ? (id ? '&' : '?') + 'internal=demo' : '');
+  const path = (id: string | null) => catalogPath(id) + (import.meta.env.DEV && internal ? (id ? '&' : '?') + 'internal=demo' : '');
   const heading = useRef<HTMLHeadingElement>(null); const root = useRef<HTMLDivElement>(null);
   const busy = useRef(false);
   const [error, setError] = useState('');
@@ -132,7 +132,7 @@ function Discovery({ data, parentId, standard, internal }: { data: CatalogData; 
     </>}
     {error && <p role="alert" className="discovery-error">{error}</p>}
     {opening && <p role="status">Opening interactive experience…</p>}
-    {internal && <p className="discovery-source">Developer fixtures · {import.meta.env.VITE_API_ENABLED === 'true' ? 'Catalog from the school API' : 'Bundled catalog'}</p>}
+    {import.meta.env.DEV && internal && <p className="discovery-source">Developer fixtures · {import.meta.env.VITE_API_ENABLED === 'true' ? 'Catalog from the school API' : 'Bundled catalog'}</p>}
   </div>;
 }
 export default function Catalog() {

@@ -1,5 +1,5 @@
 import { lessonVersionSchema, type Catalog } from './lesson.js';
-import { CHEMISTRY } from './chemistry.js';
+import { CHEMISTRY } from './chemistry-content.js';
 
 export const PHYSICS = { subject: '60000000-0000-4000-8000-000000000003', chapter: '60000000-0000-4000-8000-000000000004',
   topic: '60000000-0000-4000-8000-000000000005', lesson: '60000000-0000-4000-8000-000000000006',

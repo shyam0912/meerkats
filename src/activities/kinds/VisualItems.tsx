@@ -18,6 +18,6 @@ export default function VisualItems({ activity, selectedId, onSelect }: {
         <div key={item.id} className="scene-shape static-shape" style={style}>{graphic}</div>;
     })}
     <div className="scene-detail" aria-live="polite"><p>{selected?.description ?? (onSelect ? 'Choose a shape.' : 'Observe · Describe · Compare')}</p></div>
-    <span className="scene-footnote">Original engineering fixture · Not textbook content</span>
+    {import.meta.env.MODE !== 'demo' && <span className="scene-footnote">Original engineering fixture · Not textbook content</span>}
   </div>;
 }

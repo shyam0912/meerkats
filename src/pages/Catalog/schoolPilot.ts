@@ -11,6 +11,8 @@ export function contentState(definition?: LessonDefinition, version?: LessonVers
     version.provenance.reviewStatus === 'reviewed' ? 'Ready' : 'Preview';
 }
 export function schoolCatalog(data: Catalog): Catalog {
+  // Demo builds load a curriculum allowlist directly.
+  if (import.meta.env.MODE === 'demo') return data;
   const hidden = new Set([internalCurriculumId]);
   // Parent order is not part of the API contract.
   for (let level = 0; level < 4; level++) for (const node of data.nodes) {

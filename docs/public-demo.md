@@ -20,11 +20,16 @@ The upload contains the SPA, compiled JS/CSS, the active favicon, `THIRD-PARTY-N
 
 Vite derives the JS inventory from the emitted chunks, including lazy activities and transitive packages. The audited packages are its-fine, Konva, React, React DOM, React Konva, React Reconciler, React Router, Scheduler and Zod. Each supplies an MIT license. The release also includes MIT notices for Tailwind CSS, Vite and Rolldown helpers and credits for embedded code including Konva's StackBlur. The font's full license and copyright remain in `fonts/OFL-NotoSansMalayalam.txt`.
 
-Before public release, the owner should review the following downloadable content:
+The public catalog includes only the Chemistry and Physics previews. It retains the published lesson, activity and scene IDs, source titles, editions, page references and teacher-review status. The engineering fixture and Chemistry authoring note belong to the development catalog. The favicon reuses the Home symbol in Meerkats deep teal.
 
-- Chemistry and Physics reference SCERT Kerala Standard X materials. The bundle contains original interactive graphics and source citations. The supplied textbook PDFs are outside the upload. Both lessons retain their academic review status. Confirm public distribution of the actual presentations and worked examples.
-- The bundled neutral engineering lesson is hidden from normal school discovery but its data is downloadable. Chemistry's published provenance includes the source PDF basename and a repository-relative documentation path. Confirm these metadata are suitable for public release, or approve a separate public-content change before deployment.
-- The document references the existing starter favicon. Review its origin and branding for public use. The unused social-brand icon sprite has been removed.
+### Lesson rights and attribution
+
+| Public experience | Source and material present |
+| --- | --- |
+| From carbon chains to isomers | SCERT Kerala, Standard X Chemistry, Part I, English Medium, first edition 2025, pp. 7–10 and 25–26. The unit heading and chemical names correspond to the textbook. Seven interactive steps use pentane and 2-methylbutane to explore chains, numbering, naming and isomerism. Meerkats renders the two bond graphs from atom and bond data. |
+| Lenses | SCERT Kerala, Standard X Physics, Part I, first edition 2025, Chapter 2, pp. 27–40. The chapter name, optics terms and standard ray constructions correspond to the reference. Meerkats computes the rays, arrows and image readout from the ideal thin-lens model as the teacher moves the object. |
+
+Review of the cited pages, lesson data and renderers found no embedded textbook scans, copied pictures, tables or reproduced explanatory passages. Both textbook references are credited to SCERT Kerala / Department of General Education, Government of Kerala. The owner should record the public-distribution basis and any required attribution for the actual worked examples and presentations before publishing. Both experiences remain **Preview / Teacher Review Pending**. Technical publication pins a version for session recovery.
 
 ## Publish manually after approval
 

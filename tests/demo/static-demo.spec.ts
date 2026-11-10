@@ -1,8 +1,9 @@
 import { expect, test as base } from '@playwright/test';
 import { readFile, readdir } from 'node:fs/promises';
+import { execFileSync } from 'node:child_process';
 import { launchChemistry } from '../helpers/chemistry';
 import { launchPhysics } from '../helpers/physics';
-import { button, point, savedRecord, surface } from '../helpers/shape-editing';
+import { button, createShape, currentShapes, point, savedRecord, surface } from '../helpers/shape-editing';
 
 const test = base.extend<{ monitor: void }>({
   monitor: [async ({ page, baseURL }, use) => {
@@ -46,10 +47,48 @@ test('upload contains only frontend assets and navigations resolve to the SPA', 
     expect(asset.headers()['content-type']).toMatch(file.endsWith('.js') ? /javascript/ : /css/);
     const contents = await asset.text();
     expect(contents.includes('DEP2B_PRIVATE_BUILD_CANARY')).toBe(false);
+    expect(contents).not.toMatch(/4[0-4]000000-0000-4000-8000-|engineering fixture|Developer fixtures|internal=demo|A closer look at shapes|10_Chemistry Eng\.pdf|docs\/phase-5-source\.md/i);
     expect(/postgres(?:ql)?:\/\/|DATABASE_URL|CLOUDFLARE_API_TOKEN|\/api\/v1|-----BEGIN (?:[A-Z]+ )*PRIVATE KEY-----|https?:\/\/(?:localhost|127\.0\.0\.1):3001/i.test(contents)).toBe(false);
   }
   const font = await request.get('/fonts/NotoSansMalayalam.ttf');
   expect((await font.body()).equals(await readFile('public/fonts/NotoSansMalayalam.ttf'))).toBe(true);
+});
+
+test('the served favicon renders the Home dot and both arches at tab sizes', async ({ page }) => {
+  await page.goto('/');
+  const href = await page.locator('link[rel="icon"]').getAttribute('href');
+  expect(href).toBe('/favicon.svg');
+  const samples = await page.evaluate(async () => {
+    const icon = new Image();
+    icon.src = '/favicon.svg';
+    await icon.decode();
+    return [16, 32, 48].map(size => {
+      const canvas = document.createElement('canvas');
+      canvas.width = canvas.height = size;
+      const ctx = canvas.getContext('2d')!;
+      ctx.drawImage(icon, 0, 0, size, size);
+      return ([[18, 5], [5, 24], [31, 24]] as const).map(([x, y]) => {
+        const [r, g, b, a] = ctx.getImageData(Math.floor(x * size / 36), Math.floor(y * size / 36), 1, 1).data;
+        return a === 255 && g! > r! && g! > b! && r! < 140;
+      });
+    });
+  });
+  expect(samples).toEqual(Array.from({ length: 3 }, () => [true, true, true]));
+});
+
+test('public Whiteboard restores a selected shape duplicate through Undo and Redo', async ({ page }) => {
+  await page.goto('/');
+  await button(page, 'Whiteboard').click();
+  await createShape(page, 'Rectangle');
+  await button(page, 'Select').click();
+  await button(page, 'Next shape').click();
+  await button(page, 'Duplicate').click();
+  const shapes = await currentShapes(page);
+  expect(shapes).toHaveLength(2);
+  await button(page, 'Undo').click();
+  expect(await currentShapes(page)).toEqual(shapes.slice(0, 1));
+  await button(page, 'Redo').click();
+  expect(await currentShapes(page)).toEqual(shapes);
 });
 
 test('public notices include complete installed licenses for the audited bundle', async ({ request }) => {
@@ -84,7 +123,9 @@ for (const [width, height] of [[1920, 1080], [1280, 720], [1024, 600]] as const)
   test(`device-local board, PNG and recovery at ${width}x${height}`, async ({ page }, info) => {
     await page.setViewportSize({ width, height });
     await page.goto('/');
-    await expect(page.getByText(/^Demo Version · [a-f0-9]{12,}(?:-dirty)?$/)).toBeInViewport();
+    const head = execFileSync('git', ['rev-parse', '--short=12', 'HEAD'], { encoding: 'utf8' }).trim();
+    const dirty = execFileSync('git', ['status', '--porcelain'], { encoding: 'utf8' }).trim();
+    await expect(page.getByText(`Demo Version · ${head}${dirty ? '-dirty' : ''}`, { exact: true })).toBeInViewport();
     await expect(page.getByText('Boards are saved only in this browser. Clearing site data erases them.')).toBeInViewport({ ratio: 1 });
     expect(await page.evaluate(() => document.documentElement.scrollHeight <= innerHeight)).toBe(true);
     await page.screenshot({ path: info.outputPath('home.png') });
@@ -149,6 +190,9 @@ test('bundled Classroom lessons run without an API', async ({ page }) => {
   for (let carbon = 1; carbon < 5; carbon++) {
     await page.getByRole('button', { name: /Reveal next carbon/ }).click();
   }
+  await expect(page.getByText('5 of 5 carbons revealed')).toBeVisible();
+  await expect(page.getByRole('status')).toHaveText('Saved on this device');
+  await page.reload();
   await expect(page.getByText('5 of 5 carbons revealed')).toBeVisible();
   await launchPhysics(page);
   await button(page, 'Concave').click();
