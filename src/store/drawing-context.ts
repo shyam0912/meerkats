@@ -5,6 +5,7 @@ import type { TeachingMode } from "../drawing/session";
 import type { LessonSession, ActivityState } from '../../contracts/lesson';
 
 export interface DrawingContextType {
+  batchObjects: (action: import('../drawing/document').BatchAction) => void;
   whiteboard: import('../drawing/whiteboard').WhiteboardState;
   changePage: (action: import('../drawing/whiteboard').PageAction) => void;
   lesson?: LessonSession;

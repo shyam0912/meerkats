@@ -1,6 +1,24 @@
 import type { Stroke } from "../types/drawing";
 import { SCENE_BOUNDS, type SceneBounds } from "./scene";
 import { teachingTextSchema, type TeachingText, teachingShapeSchema, type TeachingShape } from '../../contracts';
+import { MAX_SELECTION, type EditableObject } from './objectSelection';
+
+export type BatchAction = { type: 'batch'; kind: 'move' | 'duplicate' | 'delete'; ids: readonly string[]; objects?: readonly EditableObject[] };
+type ObjectChange = { before?: EditableObject; after?: EditableObject; index: number };
+function applyChanges<T extends EditableObject>(items: readonly T[], changes: readonly ObjectChange[], kind: T['kind'], reverse: boolean): T[] {
+  const relevant = changes.filter(c => (c.before ?? c.after)!.kind === kind);
+  const result = items.flatMap(item => {
+    const change = relevant.find(c => (reverse ? c.after : c.before)?.id === item.id);
+    if (!change) return [item];
+    const next = reverse ? change.before : change.after;
+    return next ? [next as T] : [];
+  });
+  for (const c of [...relevant].sort((a, b) => a.index - b.index)) {
+    const before = reverse ? c.after : c.before; const after = reverse ? c.before : c.after;
+    if (!before && after) result.splice(c.index, 0, after as T);
+  }
+  return result;
+}
 
 export interface DocumentOwner {
   sessionId: string;
@@ -22,6 +40,7 @@ export interface DrawingDocument {
   texts?: readonly TeachingText[];
 }
 export type DrawingOperation =
+  | { type: 'batch'; changes: readonly ObjectChange[] }
   | { type: 'add-text'; object: TeachingText }
   | { type: 'edit-text'; before: TeachingText; after: TeachingText }
   | { type: 'delete-text'; object: TeachingText; index: number }
@@ -36,6 +55,7 @@ export interface DocumentState {
   future: readonly DrawingOperation[];
 }
 export type DocumentAction =
+  | BatchAction
   | { type: 'commit-text'; text: TeachingText }
   | { type: 'edit-text'; text: TeachingText }
   | { type: 'delete-text'; id: string }
@@ -56,6 +76,7 @@ export function createDocument(owner: DocumentOwner, id: string): DocumentState 
   };
 }
 function apply(objects: readonly Stroke[], operation: DrawingOperation, reverse = false) {
+  if (operation.type === 'batch') return objects;
   if (operation.type === 'add-text' || operation.type === 'edit-text' || operation.type === 'delete-text' || operation.type === 'add-shape' || operation.type === 'edit-shape' || operation.type === 'delete-shape') return objects;
   if (operation.type === "clear-content") return reverse ? operation.removed : [];
   return reverse ? objects.filter((object) => object.id !== operation.object.id)
@@ -79,7 +100,35 @@ export function documentReducer(state: DocumentState, action: DocumentAction): D
       future = future.slice(0, -1);
     }
   } else {
-    if (action.type === "clear") {
+    if (action.type === 'batch') {
+      if (!state.document.pageId || !action.ids.length || action.ids.length > MAX_SELECTION || new Set(action.ids).size !== action.ids.length) return state;
+      const editable = [...(state.document.shapes ?? []), ...(state.document.texts ?? [])];
+      const originals = action.ids.map(id => editable.find(o => o.id === id));
+      if (originals.some(o => !o)) return state;
+      const changes: ObjectChange[] = [];
+      const next = action.objects ?? [];
+      if (action.kind !== 'delete' && (next.length !== action.ids.length || new Set(next.map(o => o.id)).size !== next.length ||
+        next.some(o => !(o.kind === 'text' ? teachingTextSchema : teachingShapeSchema).safeParse(o).success))) return state;
+      if (action.kind === 'delete' && next.length) return state;
+      let shapeIndex = state.document.shapes?.length ?? 0; let textIndex = state.document.texts?.length ?? 0;
+      for (let i = 0; i < originals.length; i++) {
+        const before = originals[i]!; const after = next[i];
+        const index = (before.kind === 'text' ? state.document.texts : state.document.shapes)!.findIndex(o => o.id === before.id);
+        if (action.kind === 'delete') changes.push({ before, index });
+        else {
+          if (!after || after.kind !== before.kind || (after.kind === 'shape' && before.kind === 'shape' && after.shape !== before.shape)) return state;
+          if (action.kind === 'duplicate') {
+            if ([...state.document.objects, ...editable].some(o => o.id === after.id)) return state;
+            changes.push({ after, index: after.kind === 'text' ? textIndex++ : shapeIndex++ });
+          } else {
+            if (before.id !== after.id) return state;
+            if (JSON.stringify(before) !== JSON.stringify(after)) changes.push({ before, after, index });
+          }
+        }
+      }
+      if (!changes.length) return state;
+      operation = { type: 'batch', changes };
+    } else if (action.type === "clear") {
       if (state.document.objects.length === 0 && !state.document.shapes?.length && !state.document.texts?.length) return state;
       operation = { type: "clear-content", removed: state.document.objects, removedShapes: state.document.shapes, removedTexts: state.document.texts };
     } else if (action.type === 'commit-text' || action.type === 'edit-text' || action.type === 'delete-text') {
@@ -128,7 +177,9 @@ export function documentReducer(state: DocumentState, action: DocumentAction): D
     future = [];
   }
   let shapes = state.document.shapes;
-  if (operation.type === 'clear-content') {
+  if (operation.type === 'batch') {
+    if (shapes) shapes = applyChanges(shapes, operation.changes, 'shape', action.type === 'undo');
+  } else if (operation.type === 'clear-content') {
     // Keep ink-only annotation/v1 projections free of shape fields.
     shapes = action.type === 'undo' ? operation.removedShapes : shapes ? [] : undefined;
   } else if (operation.type === 'add-shape') {
@@ -145,7 +196,9 @@ export function documentReducer(state: DocumentState, action: DocumentAction): D
     else shapes = shapes.filter(s => s.id !== removed.id);
   }
   let texts = state.document.texts;
-  if (operation.type === 'clear-content') texts = action.type === 'undo' ? operation.removedTexts : texts ? [] : undefined;
+  if (operation.type === 'batch') {
+    if (texts) texts = applyChanges(texts, operation.changes, 'text', action.type === 'undo');
+  } else if (operation.type === 'clear-content') texts = action.type === 'undo' ? operation.removedTexts : texts ? [] : undefined;
   else if (operation.type === 'add-text') texts = action.type === 'undo' ? texts?.filter(t => t.id !== operation.object.id) : [...(texts ?? []), operation.object];
   else if (operation.type === 'edit-text') { const next = action.type === 'undo' ? operation.before : operation.after; texts = texts?.map(t => t.id === next.id ? next : t); }
   else if (operation.type === 'delete-text') {

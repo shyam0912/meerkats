@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useLayoutEffect, useMemo, useReducer, useRef, useState, type ReactNode } from "react";
-import type { DocumentOwner } from "../drawing/document";
+import type { BatchAction, DocumentOwner } from "../drawing/document";
 import { activeDocument, createDrawingSession, createLessonSession, sessionReducer, type TeachingMode } from "../drawing/session";
 import type { LessonVersion, ActivityState } from '../../contracts/lesson';
 import type { DrawingTool, Stroke } from "../types/drawing";
@@ -92,6 +92,7 @@ function SessionDrawingProvider({ children, owner, identity, restored, lessonVer
     dispatch({ type: 'document', documentId, pageId, action });
   }, [session.whiteboard, documentId, pageId]);
   const deleteText = useCallback((id: string) => dispatch({ type: 'document', documentId, pageId, action: { type: 'delete-text', id } }), [documentId, pageId]);
+  const batchObjects = useCallback((action: BatchAction) => dispatch({ type: 'document', documentId, pageId, action }), [documentId, pageId]);
   const undo = useCallback(() => dispatch({ type: "document", documentId, pageId, action: { type: "undo" } }), [documentId, pageId]);
   const redo = useCallback(() => dispatch({ type: "document", documentId, pageId, action: { type: "redo" } }), [documentId, pageId]);
   const clearCanvas = useCallback(() => dispatch({ type: "document", documentId, pageId, action: { type: "clear" } }), [documentId, pageId]);
@@ -100,6 +101,7 @@ function SessionDrawingProvider({ children, owner, identity, restored, lessonVer
     return !textEditing.current && persistence.canLeave;
   }, [persistence]);
   const value = useMemo(() => ({
+    batchObjects,
     saveText, deleteText, isTextEditing, setTextEditing,
     shapeType, shapeColor, shapeWidth, setShapeType, setShapeColor, setShapeWidth, commitObject, editShape, deleteShape,
     whiteboard: session.whiteboard, changePage,
@@ -108,7 +110,7 @@ function SessionDrawingProvider({ children, owner, identity, restored, lessonVer
     canUndo: state.past.length > 0, canRedo: state.future.length > 0,
     setSelectedTool, setStrokeColor, setStrokeWidth, setEraserWidth, setInteracting, flushBeforeLeave,
     commitStroke, undo, redo, clearCanvas, saveStatus, storageChecked, selection, setSelection, activatePersistence,
-  }), [saveText, deleteText, isTextEditing, setTextEditing, shapeType, shapeColor, shapeWidth, commitObject, editShape, deleteShape, state, session.whiteboard, changePage, session.mode, session.lesson, selectActivity, updateActivity, setMode, selectedTool, strokeColor, strokeWidth, eraserWidth, flushBeforeLeave, isInteracting, commitStroke, undo, redo, clearCanvas, saveStatus, storageChecked, selection, setSelection, activatePersistence]);
+  }), [batchObjects, saveText, deleteText, isTextEditing, setTextEditing, shapeType, shapeColor, shapeWidth, commitObject, editShape, deleteShape, state, session.whiteboard, changePage, session.mode, session.lesson, selectActivity, updateActivity, setMode, selectedTool, strokeColor, strokeWidth, eraserWidth, flushBeforeLeave, isInteracting, commitStroke, undo, redo, clearCanvas, saveStatus, storageChecked, selection, setSelection, activatePersistence]);
   return <DrawingContext.Provider value={value}>{children}</DrawingContext.Provider>;
 }
 export default function DrawingProvider({ children }: { children: ReactNode }) {
