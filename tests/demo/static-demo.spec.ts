@@ -25,7 +25,7 @@ const test = base.extend<{ monitor: void }>({
 test('upload contains only frontend assets and navigations resolve to the SPA', async ({ request }) => {
   const config = JSON.parse(await readFile('wrangler.jsonc', 'utf8'));
   expect(config).toEqual({
-    name: 'meerkats-demo', compatibility_date: expect.stringMatching(/^\d{4}-\d{2}-\d{2}$/),
+    name: 'project', compatibility_date: expect.stringMatching(/^\d{4}-\d{2}-\d{2}$/),
     workers_dev: true, preview_urls: false,
     assets: { directory: './dist-demo', not_found_handling: 'single-page-application' },
   });

@@ -1,6 +1,6 @@
 # Public Meerkats demo
 
-Teachers and school partners can open Classroom or Whiteboard without signing in. Cloudflare serves only the contents of `dist-demo/`. The intended address is `https://meerkats-demo.<account-subdomain>.workers.dev`. Wrangler prints the actual HTTPS URL on deployment. Keep that origin stable so returning teachers can reopen their boards.
+Teachers and school partners can open Classroom or Whiteboard without signing in. Cloudflare serves only the contents of `dist-demo/`. The intended address is `https://project.meerkats-demo.workers.dev`. Wrangler prints the actual HTTPS URL on deployment. Keep that origin stable so returning teachers can reopen their boards.
 
 ## Hosting and cost
 
@@ -33,7 +33,7 @@ Review of the cited pages, lesson data and renderers found no embedded textbook 
 
 ## Publish manually after approval
 
-1. Select the project’s Cloudflare Workers Free account and configure its free workers.dev subdomain. Use a dedicated `meerkats-demo` Worker name. At first release, confirm the name is unused. For later releases, confirm it identifies this demo. Leave Git integration and automatic builds disconnected. Visitors need neither a login nor an email invitation. If an account-wide policy prevents public access, choose an appropriate demo account or scope the policy change to this demo.
+1. Select the project's Cloudflare Workers Free account with the existing `meerkats-demo.workers.dev` subdomain. Use the Worker name `project`. At first release, confirm the name is unused. For later releases, confirm it identifies this demo. Leave Git integration and automatic builds disconnected. Visitors need neither a login nor an email invitation. If an account-wide policy prevents public access, choose an appropriate demo account or scope the policy change to this demo.
 2. Using an approved, pinned Wrangler CLI on the operator workstation, confirm `wrangler --version` and `wrangler whoami`. Keep operator credentials outside the frontend. From the repository root with the tested artifact in place, run `wrangler deploy --config wrangler.jsonc`. This command publishes immediately. Record the HTTPS URL, Worker version ID, release SHA, and previous known-good version.
 3. In a signed-out browser, open the printed URL and a direct `/catalog` link. Check the release and local-storage notice, load Chemistry and Physics, and try two lines of mixed Malayalam/English board text, Duplicate and PNG export. After “Saved on this device,” refresh the workspace URL and reopen the same board through Recent Boards. Verify a fresh profile has no access to the first profile’s board. Check the network panel for successful JS/CSS/font loads and zero application API calls. A JSON request to `/api/v1/health` must not reach a development service. A browser navigation can receive the SPA shell for unmatched paths.
 4. Check Windows Chrome/Edge, iPad Safari (rotation, input and PNG download/share), and Android touch browsers before advertising device support. Physical Android 14 panels need a separate trial. Share the verified workers.dev URL. For feedback, ask for the release ID, device, browser and reproduction steps through the project’s existing contact channel.
