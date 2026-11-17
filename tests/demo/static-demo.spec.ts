@@ -3,6 +3,8 @@ import { readFile, readdir } from 'node:fs/promises';
 import { execFileSync } from 'node:child_process';
 import { launchChemistry } from '../helpers/chemistry';
 import { launchPhysics } from '../helpers/physics';
+import { launchCounting, counterPositions, countingMore } from '../helpers/counting';
+import { drawDot, inkSurface } from '../helpers/chemistry';
 import { button, createShape, currentShapes, point, savedRecord, surface } from '../helpers/shape-editing';
 
 const test = base.extend<{ monitor: void }>({
@@ -201,3 +203,58 @@ test('bundled Classroom lessons run without an API', async ({ page }) => {
   await page.reload();
   await expect(button(page, 'Concave')).toHaveAttribute('aria-pressed', 'true');
 });
+
+for (const [width, height] of [[1920, 1080], [1280, 720], [1024, 600]] as const) {
+  test(`public Standard 1 preview, interaction and recovery at ${width}x${height}`, async ({ page }, info) => {
+    await page.setViewportSize({ width, height });
+    await launchCounting(page); // Includes the exact Original Demo Concept / Teacher Review Pending label.
+    const before = await counterPositions(page);
+    const counter = page.getByTestId('counter-1');
+    const box = (await counter.boundingBox())!;
+    expect(box.width).toBeGreaterThanOrEqual(56);
+    await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2);
+    await page.mouse.down();
+    await page.mouse.move(box.x + box.width / 2, box.y - 60, { steps: 12 });
+    await page.mouse.up();
+    const moved = await counterPositions(page);
+    expect(moved[0]).not.toEqual(before[0]);
+    expect(moved.map(c => c.id)).toEqual(before.map(c => c.id));
+    expect(moved.slice(1)).toEqual(before.slice(1));
+    await button(page, 'Show count').click();
+    await expect(page.getByTestId('counting-total')).toContainText('5');
+    await page.screenshot({ path: info.outputPath('counting-english.png') });
+    await countingMore(page);
+    await button(page, 'Count together').click();
+    await button(page, 'Change label language').click();
+    await page.screenshot({ path: info.outputPath('counting-settings.png') });
+    await button(page, 'Close counting settings').click();
+    await button(page, 'Next counter').click();
+    await expect(page.locator('.counting-counter.counted')).toHaveCount(1);
+    await expect(page.locator('.counting-title')).toHaveText('എണ്ണം അതേ. ക്രമം വേറെ.');
+    for (const name of ['Explore', 'Annotate', 'Whiteboard', 'Quantity', 'More counting controls']) {
+      const target = (await button(page, name).boundingBox())!;
+      expect(target.height).toBeGreaterThanOrEqual(56);
+      await expect(button(page, name)).toBeInViewport({ ratio: 1 });
+    }
+    await page.evaluate(() => document.fonts.ready);
+    expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth && document.documentElement.scrollHeight <= innerHeight)).toBe(true);
+    await page.screenshot({ path: info.outputPath('counting-malayalam.png') });
+    await button(page, 'Annotate').click();
+    await expect(page.locator('.content-layer')).toHaveAttribute('inert', '');
+    await drawDot(page);
+    expect(await counterPositions(page)).toEqual(moved);
+    await button(page, 'Whiteboard').click();
+    await drawDot(page, true);
+    await expect(inkSurface(page, true)).toHaveAttribute('data-ink-count', '1');
+    await button(page, 'Explore').click();
+    await expect(inkSurface(page)).toHaveAttribute('data-ink-count', '1');
+    await expect(page.locator('.interactive-save')).toHaveText('Saved on this device');
+    await page.reload();
+    expect(await counterPositions(page)).toEqual(moved);
+    await expect(page.locator('.counting-counter.counted')).toHaveCount(1);
+    await expect(page.locator('.counting-title')).toHaveText('എണ്ണം അതേ. ക്രമം വേറെ.');
+    await expect(inkSurface(page)).toHaveAttribute('data-ink-count', '1');
+    await button(page, 'Whiteboard').click();
+    await expect(inkSurface(page, true)).toHaveAttribute('data-ink-count', '1');
+  });
+}

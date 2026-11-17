@@ -6,10 +6,17 @@ import { CHEMISTRY } from '../../contracts/chemistry';
 import { PHYSICS } from '../../contracts/physics';
 import { bundledCatalog, bundledVersions } from './public-catalog';
 
-test('the public catalog keeps both published lesson routes and their shared class ancestry', () => {
-  expect(bundledCatalog.nodes).toEqual(internal.nodes.filter(node => !Object.values<string>(DEMO).includes(node.id) && !Object.values<string>(COUNTING).includes(node.id)));
-  expect(bundledCatalog.lessons).toEqual(internal.lessons.filter(lesson => lesson.id !== DEMO.lesson && lesson.id !== COUNTING.lesson));
-  expect(bundledVersions.map(v => v.id)).toEqual([CHEMISTRY.version, PHYSICS.version]);
+test('the public catalog keeps all three approved previews and excludes the engineering fixture', () => {
+  expect(bundledCatalog.nodes).toEqual(internal.nodes.filter(node => !Object.values<string>(DEMO).includes(node.id)));
+  expect(bundledCatalog.lessons).toEqual(internal.lessons.filter(lesson => lesson.id !== DEMO.lesson));
+  expect(bundledVersions.map(v => v.id)).toEqual([CHEMISTRY.version, PHYSICS.version, COUNTING.version]);
+});
+
+test('Standard 1 remains an original demo concept with teacher review pending', () => {
+  const version = bundledVersions.find(v => v.id === COUNTING.version)!;
+  expect(version.provenance.sourceType).toBe('original-demo');
+  expect(version.provenance.reviewStatus).toBe('teacher-review-pending');
+  expect(version.provenance.note).toBe('Original Demo Concept — Preview / Teacher Review Pending. Not an official SCERT chapter.');
 });
 
 test('only the Chemistry authoring note differs from the pinned development payloads', () => {
