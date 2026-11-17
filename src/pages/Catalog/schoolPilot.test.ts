@@ -1,3 +1,4 @@
+import { COUNTING } from '../../../contracts/counting-content';
 import { describe, expect, it } from 'vitest';
 import { bundledCatalog } from '../../../contracts/catalog-content';
 import { CHEMISTRY, chemistryVersion } from '../../../contracts/chemistry';
@@ -10,7 +11,8 @@ describe('school pilot presentation boundaries', () => {
     const before = structuredClone(bundledCatalog);
     const choices = standardChoices(schoolCatalog(bundledCatalog));
     expect(choices.map(c => c.number)).toEqual([1,2,3,4,5,6,7,8,9,10]);
-    expect(choices.slice(0, 9).every(c => !c.node && c.path === '/catalog?standard=' + c.number)).toBe(true);
+    expect(choices.slice(1, 9).every(c => !c.node && c.path === '/catalog?standard=' + c.number)).toBe(true);
+    expect(choices[0]!.node!.id).toBe(COUNTING.class);
     expect(choices[9]!.node!.id).toBe(CHEMISTRY.class);
     expect(pilotClassId).toBe(CHEMISTRY.class);
     expect(bundledCatalog).toEqual(before);
@@ -18,7 +20,7 @@ describe('school pilot presentation boundaries', () => {
   it('excludes the internal fixture at every depth regardless of API node ordering', () => {
     const result = schoolCatalog({ ...bundledCatalog, nodes: [...bundledCatalog.nodes].reverse() });
     expect(result.nodes.map(n => n.id).sort()).toEqual(bundledCatalog.nodes.filter(n => !n.id.startsWith('40000000')).map(n => n.id).sort());
-    expect(result.lessons.map(l => l.id)).toEqual([CHEMISTRY.lesson, PHYSICS.lesson]);
+    expect(result.lessons.map(l => l.id)).toEqual([CHEMISTRY.lesson, PHYSICS.lesson, COUNTING.lesson]);
     expect(result.nodes.some(n => n.id === DEMO.topic)).toBe(false);
   });
   it('keeps Standard 10 planned when its catalog node is absent', () => {

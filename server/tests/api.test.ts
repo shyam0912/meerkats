@@ -1,3 +1,4 @@
+import { COUNTING, countingVersion } from '../../contracts/counting-content.js';
 import { beforeAll, afterAll, describe, expect, it } from 'vitest';
 import { randomUUID } from 'node:crypto';
 import { mkdtemp, rm } from 'node:fs/promises';
@@ -66,6 +67,21 @@ afterAll(async () => {
 });
 
 describe('real PostgreSQL API', () => {
+  it('accepts bounded counting progress, retains exact retries and rejects malformed or stale saves', async () => {
+    const session = { id: randomUUID(), lessonVersionId: COUNTING.version, context: { classId: COUNTING.class, subjectId: COUNTING.subject, classLabel: 'Standard 1', subjectLabel: 'Mathematics' } };
+    expect((await app.inject({ method: 'POST', url: '/api/v1/sessions', payload: session })).statusCode).toBe(200);
+    const progress = initialProgress(countingVersion); progress.localRevision = 1;
+    const state = progress.states[COUNTING.activity]!; if (state.kind !== 'counting-board') throw new Error('fixture');
+    state.language = 'ml'; state.counters[0]!.y = 200;
+    const request = { mutationId: randomUUID(), baseServerRevision: 0, progress };
+    const send = (payload: unknown) => app.inject({ method: 'PUT', url: '/api/v1/sessions/' + session.id + '/progress', payload: payload as object });
+    expect((await send(request)).statusCode).toBe(200); expect((await send(request)).statusCode).toBe(200);
+    const bad = structuredClone(request); bad.mutationId = randomUUID(); bad.baseServerRevision = 1;
+    const badState = bad.progress.states[COUNTING.activity]!; if (badState.kind !== 'counting-board') throw new Error('fixture');
+    badState.counters[0]!.id = randomUUID(); expect((await send(bad)).statusCode).toBe(400);
+    expect((await send({ ...request, mutationId: randomUUID() })).statusCode).toBe(409);
+    const restored = (await app.inject({ url: '/api/v1/sessions/' + session.id })).json(); expect(restored.progress).toEqual(progress);
+  });
   it('roundtrips exact v4 Unicode and protects it from old-version writes while retaining old retries', async () => {
     const old = saveBody((await create()).id); expect((await put(old)).statusCode).toBe(200);
     const migrated = migrateWhiteboard(old.document);

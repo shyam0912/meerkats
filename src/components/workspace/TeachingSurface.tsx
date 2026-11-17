@@ -5,9 +5,9 @@ import DrawingCanvas from "./DrawingCanvas";
 import NeutralScene, { type DemoSelection } from "./NeutralScene";
 import ActivityHost from '../../activities/ActivityHost';
 
-export default function TeachingSurface({ selection, onSelect, selectionActionsHost }: {
+export default function TeachingSurface({ selection, onSelect, selectionActionsHost, activityControlsHost }: {
   selection: DemoSelection; onSelect: (value: DemoSelection) => void;
-  selectionActionsHost?: HTMLDivElement | null;
+  selectionActionsHost?: HTMLDivElement | null; activityControlsHost?: HTMLDivElement | null;
 }) {
   const { document, mode, lesson, updateActivity } = useDrawing();
   const activity = lesson?.version.activities.find(a => a.id === lesson.progress.currentActivityId);
@@ -32,7 +32,7 @@ export default function TeachingSurface({ selection, onSelect, selectionActionsH
         style={{ width: fitted.width, height: fitted.height }}>
         {isContent && <div className="content-layer" inert={mode === "annotate"}
           style={{ width: document.bounds.width, height: document.bounds.height, transform: `scale(${fitted.scale})` }}>
-          {activity && lesson ? <ActivityHost activity={activity} state={lesson.progress.states[activity.id]!} onChange={state => updateActivity(activity.id, state)} />
+          {activity && lesson ? <ActivityHost enabled={mode === "explore"} controlsHost={activityControlsHost} activity={activity} state={lesson.progress.states[activity.id]!} onChange={state => updateActivity(activity.id, state)} />
             : <NeutralScene selection={selection} onSelect={onSelect} />}
         </div>}
         <DrawingCanvas key={document.id + ':' + (document.pageId ?? '')} enabled={mode !== "explore"} transparent={isContent} selectionActionsHost={selectionActionsHost} />

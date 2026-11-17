@@ -1,3 +1,4 @@
+import { COUNTING } from '../../contracts/counting-content';
 import { expect, test } from 'vitest';
 import { DEMO } from '../../contracts/demo';
 import { bundledCatalog as internal, bundledVersions as published } from '../../contracts/catalog-content';
@@ -6,8 +7,8 @@ import { PHYSICS } from '../../contracts/physics';
 import { bundledCatalog, bundledVersions } from './public-catalog';
 
 test('the public catalog keeps both published lesson routes and their shared class ancestry', () => {
-  expect(bundledCatalog.nodes).toEqual(internal.nodes.filter(node => !Object.values<string>(DEMO).includes(node.id)));
-  expect(bundledCatalog.lessons).toEqual(internal.lessons.filter(lesson => lesson.id !== DEMO.lesson));
+  expect(bundledCatalog.nodes).toEqual(internal.nodes.filter(node => !Object.values<string>(DEMO).includes(node.id) && !Object.values<string>(COUNTING).includes(node.id)));
+  expect(bundledCatalog.lessons).toEqual(internal.lessons.filter(lesson => lesson.id !== DEMO.lesson && lesson.id !== COUNTING.lesson));
   expect(bundledVersions.map(v => v.id)).toEqual([CHEMISTRY.version, PHYSICS.version]);
 });
 

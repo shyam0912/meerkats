@@ -23,7 +23,8 @@ export function schoolCatalog(data: Catalog): Catalog {
 export function standardChoices(data: Catalog) {
   return Array.from({ length: 10 }, (_, i) => {
     const number = i + 1;
-    const node = number === 10 ? data.nodes.find(n => n.id === pilotClassId && n.kind === 'class') : undefined;
+    const classId = number === 10 ? pilotClassId : number === 1 ? '70000000-0000-4000-8000-000000000002' : undefined;
+    const node = data.nodes.find(n => n.id === classId && n.kind === 'class');
     return { number, node, label: `Standard ${number}`, path: node ? `/catalog?parent=${node.id}` : `/catalog?standard=${number}` };
   });
 }

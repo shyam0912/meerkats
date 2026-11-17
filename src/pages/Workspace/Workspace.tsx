@@ -13,7 +13,8 @@ import WhiteboardPro from '../../components/whiteboard/WhiteboardPro';
 export default function Workspace() {
   const navigate = useNavigate();
   const { selection, setSelection, activatePersistence, storageChecked, lesson, isInteracting } = useDrawing();
-  const continuous = lesson?.version.activities.some(a => a.kind === 'thin-lens');
+  const continuous = lesson?.version.activities.some(a => a.kind === 'thin-lens' || a.kind === 'counting-board');
+  const [activityControlsHost, setActivityControlsHost] = useState<HTMLDivElement | null>(null);
   const [focused, setFocused] = useState(false);
   useEffect(() => {
     const leave = (event: KeyboardEvent) => { if (event.key === 'Escape' && !isInteracting && !document.querySelector('dialog[open]')) setFocused(false); };
@@ -36,7 +37,7 @@ export default function Workspace() {
   if (!lesson && !selectedClass && !selectedSubject) return <WhiteboardPro />;
   return <div className={`teacher-workspace${continuous ? ' mk-v2 interactive-workspace' : ''}${focused ? ' is-focused' : ''}`}>
     {continuous ? <InteractiveSessionHeader focused={focused} onFocus={() => setFocused(value => !value)} /> : <SessionHeader onBack={() => navigate("/")} />}
-    <TeachingSurface selection={selection} onSelect={setSelection} />
-    <TeacherControls />
+    <TeachingSurface activityControlsHost={activityControlsHost} selection={selection} onSelect={setSelection} />
+    <TeacherControls controlsRef={setActivityControlsHost} />
   </div>;
 }

@@ -33,12 +33,12 @@ function LessonPreview({ definition, onStart }: { definition: LessonDefinition; 
     <div>
       <Badge state={state} />
       <h2>{definition.title}</h2>
-      {version ? <p className="discovery-description">{state === 'Ready' ? 'Reviewed interactive lesson' : version.provenance.reviewStatus === 'engineering-demo' ? 'Prototype · Engineering demonstration' : 'Prototype lesson · Academic teacher review pending'}</p> :
+      {version ? <p className="discovery-description">{state === 'Ready' ? 'Reviewed interactive lesson' : version.activities.some(a => a.kind === 'counting-board') ? 'Original Demo Concept — Preview / Teacher Review Pending' : version.provenance.reviewStatus === 'engineering-demo' ? 'Prototype · Engineering demonstration' : 'Prototype lesson · Academic teacher review pending'}</p> :
         <p role={error ? 'alert' : 'status'} className="discovery-description">{error ? 'This lesson could not be loaded. No teaching session was started.' : 'Loading lesson preview…'}</p>}
       {error ? <button className="discovery-control" onClick={() => { setError(false); setAttempt(a => a + 1); }}>Retry lesson</button> :
         <button className="discovery-start" disabled={!version} onClick={() => { if (version) onStart(version); }}>Start teaching<span aria-hidden="true"> →</span></button>}
     </div>
-    {version && <div className="discovery-outcomes"><p>In this lesson</p><ul>{version.objectives.map(objective => <li key={objective}>{objective}</li>)}</ul><span>{version.activities.length} interactive steps</span></div>}
+    {version && <div className="discovery-outcomes"><p>In this lesson</p><ul>{version.objectives.map(objective => <li key={objective}>{objective}</li>)}</ul><span>{version.activities.length} {version.activities.some(a => a.kind === 'counting-board') ? 'open exploration' : 'interactive steps'}</span></div>}
   </article>;
 }
 function Discovery({ data, parentId, standard, internal }: { data: CatalogData; parentId: string | null; standard: string | null; internal: boolean }) {
@@ -105,7 +105,7 @@ function Discovery({ data, parentId, standard, internal }: { data: CatalogData; 
           data-choice-id={choice.node?.id ?? 'standard-' + choice.number} data-catalog-id={choice.node?.id} aria-label={choice.label}
           onClick={() => navigate(choice.path)}>
           <span className="standard-label">Standard</span><span className="standard-number">{choice.number}</span>
-          {choice.node && data.lessons.some(l => l.classLevelId === choice.node!.id) ? <span className="standard-availability">Lesson preview →</span> : <Badge state="Planned" />}
+          {choice.node && data.lessons.some(l => l.classLevelId === choice.node!.id) ? <span className="standard-availability">Preview →</span> : <Badge state="Planned" />}
         </button>)}</div>
         <p className="discovery-legend"><strong>Ready</strong> · Reviewed lesson <span><strong>Preview</strong> · Prototype</span><span><strong>Planned</strong> · Content not yet available</span></p>
       </> : <div className={`discovery-choices discovery-${view.level}`}>

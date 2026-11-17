@@ -1,0 +1,32 @@
+@font-face { font-family: Counting Malayalam; src: url('/fonts/NotoSansMalayalam.ttf') format('truetype'); font-display: swap; }
+.counting-scene { position: relative; width: 1200px; height: 675px; font-family: 'Segoe UI', 'Counting Malayalam', sans-serif; color: #214f45; }
+.counting-canvas { width: 100%; height: 100%; touch-action: none; }
+.counting-title { font-size: 31px; font-weight: 650; fill: #214f45; }
+.counting-prompt { font-size: 23px; fill: #52675e; }
+.counting-total { font-size: 60px; fill: #214f45; font-weight: 700; }
+.counting-counter { cursor: grab; outline: none; touch-action: none; }
+.counting-counter:active { cursor: grabbing; }
+.counter-halo { stroke: transparent; }
+.counting-counter.selected .counter-halo, .counting-counter:focus-visible .counter-halo { stroke: #214f45; stroke-dasharray: 8 4; }
+.counting-counter.current .counter-halo { stroke: #214f45; stroke-width: 6; }
+.counting-counter.blocked .counter-halo { stroke: #8b481a; }
+.counter-number { fill: white; font-size: 46px; font-weight: 700; pointer-events: none; paint-order: stroke; stroke: #0003; stroke-width: 2; }
+.counting-instructions { position: absolute; bottom: 33px; left: 24px; font-size: 16px; pointer-events: none; color: #52675e; }
+.counting-review { position: absolute; bottom: 9px; left: 24px; font-size: 16px; pointer-events: none; color: #52675e; }
+.counting-controls-host { min-width: 0; }
+.counting-controls { display: flex; gap: 8px; position: relative; align-items: center; font-family: 'Segoe UI', 'Counting Malayalam', sans-serif; }
+.counting-controls .workspace-button { padding-inline: 14px; white-space: nowrap; }
+.counting-controls strong { margin-left: 8px; }
+.counting-next span { margin-left: 8px; }
+.counting-tray { position: absolute; z-index: 30; right: 0; bottom: calc(100% + 12px); width: min(470px, 85vw); padding: 20px; padding-top: 72px; background: #fcfcf6; border: 1px solid #a4b9aa; border-radius: 22px; box-shadow: 0 8px 30px #173e3820; display: flex; gap: 10px; flex-wrap: wrap; }
+.counting-tray p { margin: 0 0 8px; font-size: 17px; color: #405c4e; }
+.counting-close { position: absolute; right: 10px; top: 8px; min-width: 60px; }
+.counting-quantities { display: grid; grid-template-columns: repeat(5, 1fr); gap: 10px; width: 100%; }
+.counting-controls button:focus-visible { outline: 3px solid #214f45; outline-offset: 3px; }
+.teacher-controls:has(.counting-controls) { flex-wrap: wrap; }
+.teacher-controls:has(.counting-controls) .activity-actions { min-width: 0; }
+@media (max-width: 1100px) {
+  .teacher-controls:has(.counting-controls) { gap: 8px; }
+  .counting-controls .workspace-button { padding-inline: 10px; font-size: 16px; }
+  .counting-controls:has(.counting-next) { flex-wrap: wrap; justify-content: flex-end; }
+}
