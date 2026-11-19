@@ -1,3 +1,4 @@
+import { plantConfigSchema, plantStateSchema, initialPlantState, validPlantState } from './plant.js';
 import { countingConfigSchema, countingStateSchema, initialCountingState, validCountingState } from './counting.js';
 import { z } from 'zod';
 import { initialMoleculeState, moleculeConfigSchema, moleculeStateSchema, validMoleculeState } from './molecule.js';
@@ -31,6 +32,7 @@ const common = { id, title, sceneId: id, annotationPolicy: z.enum(['ink', 'none'
 export const visualItemSchema = z.strictObject({ id, label: title, shape: z.enum(['circle', 'triangle', 'square']),
   description: z.string().max(200), color: z.string().regex(/^#[a-fA-F0-9]{6}$/) });
 export const activitySchema = z.discriminatedUnion('kind', [
+  z.strictObject({ ...common, kind: z.literal('plant-builder'), config: plantConfigSchema }),
   z.strictObject({ ...common, kind: z.literal('counting-board'), config: countingConfigSchema }),
   z.strictObject({ ...common, kind: z.literal('thin-lens'), config: lensConfigSchema }),
   z.strictObject({ ...common, kind: z.literal('molecule-builder'), config: moleculeConfigSchema }),
@@ -51,7 +53,7 @@ export const lessonVersionSchema = z.strictObject({ id, lessonId: id, schemaVers
   if (new Set(version.activities.map(a => a.id)).size !== version.activities.length)
     ctx.addIssue({ code: 'custom', message: 'Duplicate activity identity' });
   for (const activity of version.activities) {
-    if (activity.kind === 'counting-board' || activity.kind === 'molecule-builder' || activity.kind === 'thin-lens') continue;
+    if (activity.kind === 'plant-builder' || activity.kind === 'counting-board' || activity.kind === 'molecule-builder' || activity.kind === 'thin-lens') continue;
     if (new Set(activity.config.items.map(i => i.id)).size !== activity.config.items.length)
       ctx.addIssue({ code: 'custom', message: 'Duplicate item identity' });
     if (activity.kind === 'explore' && activity.initialState.selectedId !== null && !activity.config.items.some(i => i.id === activity.initialState.selectedId))
@@ -61,6 +63,7 @@ export const lessonVersionSchema = z.strictObject({ id, lessonId: id, schemaVers
   }
 });
 export const activityStateSchema = z.discriminatedUnion('kind', [
+  plantStateSchema,
   countingStateSchema,
   lensStateSchema,
   moleculeStateSchema,
@@ -85,6 +88,7 @@ export type LessonProgress = z.infer<typeof progressSchema>;
 export type LessonSession = z.infer<typeof lessonSessionSchema>;
 export type ProgressSave = z.infer<typeof progressSaveSchema>;
 export function initialState(activity: ActivityDefinition): ActivityState {
+  if (activity.kind === 'plant-builder') return initialPlantState(activity.config);
   if (activity.kind === 'counting-board') return initialCountingState(activity.config);
   if (activity.kind === 'thin-lens') return { ...initialLensState };
   if (activity.kind === 'molecule-builder') return initialMoleculeState(activity.config);
@@ -98,6 +102,7 @@ export function validProgress(version: LessonVersion, progress: LessonProgress):
   return version.id === progress.lessonVersionId && version.activities.some(a => a.id === progress.currentActivityId) &&
     Object.keys(progress.states).length === version.activities.length && version.activities.every(a => {
       const state = progress.states[a.id];
+      if (a.kind === 'plant-builder') return validPlantState(a.config, state);
       if (a.kind === 'counting-board') return validCountingState(a.config, state);
       if (a.kind === 'thin-lens') return lensStateSchema.safeParse(state).success;
       if (a.kind === 'molecule-builder') return state?.kind === 'molecule-builder' && validMoleculeState(a.config, state);

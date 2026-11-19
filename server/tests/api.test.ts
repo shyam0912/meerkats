@@ -1,3 +1,5 @@
+import { PLANT, plantVersion } from '../../contracts/plant-content.js';
+import { wholePlant } from '../../contracts/plant.js';
 import { COUNTING, countingVersion } from '../../contracts/counting-content.js';
 import { beforeAll, afterAll, describe, expect, it } from 'vitest';
 import { randomUUID } from 'node:crypto';
@@ -349,3 +351,21 @@ describe('Phase 4 catalog, immutable lessons and durable activity progress', () 
     expect((await put(wrong)).statusCode).toBe(400);
   });
 });
+
+ it('persists plant state in UTF8 with stable IDs, exact retries and strict target validation', async () => {
+   expect((await connection.pool.query('SHOW server_encoding')).rows[0].server_encoding).toBe('UTF8');
+   const session={id:randomUUID(),lessonVersionId:PLANT.version,context:{classId:PLANT.class,subjectId:PLANT.subject,classLabel:'Standard 2',subjectLabel:'പരിസരപഠനം'}};
+   expect((await app.inject({method:'POST',url:'/api/v1/sessions',payload:session})).statusCode).toBe(200);
+   const progress=initialProgress(plantVersion),state=progress.states[PLANT.activity]!;
+   if(state.kind!=='plant-builder')throw new Error('Plant fixture');
+   progress.states[PLANT.activity]={...wholePlant(state),language:'ml',demonstration:'water'};progress.localRevision=1;
+   const body={mutationId:randomUUID(),baseServerRevision:0,progress};
+   const response=await app.inject({method:'PUT',url:'/api/v1/sessions/'+session.id+'/progress',payload:body});
+   expect(response.statusCode).toBe(200);
+   expect((await app.inject({method:'PUT',url:'/api/v1/sessions/'+session.id+'/progress',payload:body})).json()).toEqual(response.json());
+   expect((await app.inject('/api/v1/sessions/'+session.id)).json().progress).toEqual(progress);
+   const bad=structuredClone(progress);const invalid=bad.states[PLANT.activity]!;if(invalid.kind!=='plant-builder')throw new Error('Plant state');
+   invalid.parts[0]!.slot='flower';
+   expect((await app.inject({method:'PUT',url:'/api/v1/sessions/'+session.id+'/progress',payload:{mutationId:randomUUID(),baseServerRevision:1,progress:bad}})).statusCode).toBe(400);
+   expect((await app.inject('/api/v1/sessions/'+session.id)).json().progress).toEqual(progress);
+ });

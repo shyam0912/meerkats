@@ -1,0 +1,31 @@
+@font-face { font-family: Plant Malayalam; src: url('/fonts/NotoSansMalayalam.ttf') format('truetype'); font-display: swap; }
+.plant-scene { position: relative; width: 1200px; height: 675px; color: #234f43; font-family: 'Segoe UI', 'Plant Malayalam', sans-serif; }
+.plant-canvas { width: 100%; height: 100%; touch-action: none; }
+.plant-title { font-size: 34px; font-weight: 700; fill: #234f43; }
+.plant-hint { font-size: 25px; fill: #496754; }
+.plant-tray-title { font-size: 24px; font-weight: 600; fill: #496754; }
+.plant-model { font-size: 21px; fill: #705c40; }
+.plant-part { cursor: grab; outline: none; touch-action: none; }
+.plant-part-hit { fill: transparent; stroke: transparent; stroke-width: 4px; }
+.plant-part.selected .plant-part-hit, .plant-part:focus-visible .plant-part-hit { stroke: #185f51; stroke-dasharray: 8 5; }
+.plant-part-label { font-size: 28px; fill: #244e3a; font-weight: 650; paint-order: stroke; stroke: #faf9f1; stroke-width: 5px; }
+.plant-target { outline: none; }
+.plant-target-hit { fill: transparent; stroke: #729378; stroke-width: 2; stroke-dasharray: 5 8; }
+.plant-target.available { cursor: pointer; }
+.plant-target.available .plant-target-hit { fill: #dbeac77a; stroke: #367452; stroke-width: 4; }
+.plant-target:focus-visible .plant-target-hit { stroke: #103c34; stroke-width: 6; }
+.plant-caption { position: absolute; bottom: 32px; left: 32px; right: 32px; text-align: center; font-size: 28px; line-height: 1.35; font-weight: 600; pointer-events: none; }
+.plant-review { position: absolute; bottom: 9px; left: 32px; right: 32px; text-align: center; font-size: 16px; color: #52675e; }
+.plant-announcement { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); }
+.plant-controls { display: flex; gap: 8px; position: relative; font-family: 'Segoe UI', 'Plant Malayalam', sans-serif; }
+.plant-controls .workspace-button { min-height: 56px; padding-inline: 13px; }
+.plant-tray { position: absolute; z-index: 30; right: 0; bottom: calc(100% + 12px); width: min(480px,85vw); padding: 76px 18px 18px; border-radius: 24px; background: #faf9f1; border: 1px solid #a4b9aa; box-shadow: 0 8px 30px #173e3820; display: flex; flex-wrap: wrap; gap: 10px; }
+.plant-tray p { width: 100%; font-size: 20px; margin: 0 0 8px; }
+.plant-close { position: absolute; right: 12px; top: 10px; min-width: 56px; }
+.plant-controls button:focus-visible { outline: 3px solid #185f51; outline-offset: 3px; }
+.plant-water-path { animation: plant-flow 1.2s ease-out 1; pointer-events: none; }
+@keyframes plant-flow { from { stroke-dashoffset: 48; opacity: .2; } to { stroke-dashoffset: 0; opacity: 1; } }
+.teacher-controls:has(.plant-controls) { flex-wrap: wrap; }
+.teacher-controls:has(.plant-controls) .activity-actions { min-width: 0; }
+@media(max-width:1100px) { .plant-controls { gap: 5px; } .plant-controls .workspace-button { padding-inline: 10px; font-size: 16px; } }
+@media(prefers-reduced-motion:reduce) { .plant-water-path { animation: none; } }
