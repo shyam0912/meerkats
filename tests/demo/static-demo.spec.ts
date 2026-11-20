@@ -1,3 +1,4 @@
+import { launchPlant, plantMore, plantDrag, plantSaved, savedPlant } from '../helpers/plant';
 import { expect, test as base } from '@playwright/test';
 import { readFile, readdir } from 'node:fs/promises';
 import { execFileSync } from 'node:child_process';
@@ -254,6 +255,60 @@ for (const [width, height] of [[1920, 1080], [1280, 720], [1024, 600]] as const)
     await expect(page.locator('.counting-counter.counted')).toHaveCount(1);
     await expect(page.locator('.counting-title')).toHaveText('എണ്ണം അതേ. ക്രമം വേറെ.');
     await expect(inkSurface(page)).toHaveAttribute('data-ink-count', '1');
+    await button(page, 'Whiteboard').click();
+    await expect(inkSurface(page, true)).toHaveAttribute('data-ink-count', '1');
+  });
+}
+
+for (const [width, height] of [[1920, 1080], [1280, 720], [1024, 600]] as const) {
+  test(`public Standard 2 assembly, demonstrations and recovery at ${width}x${height}`, async ({ page }, info) => {
+    await page.setViewportSize({ width, height });
+    await launchPlant(page);
+    await expect(page.getByText('Original Demo Concept — Preview / Teacher Review Pending', { exact: true })).toBeVisible();
+    await page.screenshot({ path: info.outputPath('plant-empty.png') });
+    await plantDrag(page, [120, 205], [760, 510]);
+    await expect(page.getByTestId('plant-part-1')).toHaveAttribute('data-slot', 'root');
+    await plantMore(page); await button(page, 'Show whole plant').click();
+    await expect(page.locator('[data-slot="tray"]')).toHaveCount(0);
+    await page.getByTestId('plant-part-3').press('Enter');
+    await expect(page.getByTestId('plant-explanation')).toHaveText('Use light, water and air to make food.');
+    await page.screenshot({ path: info.outputPath('plant-completed.png') });
+    await button(page, 'Water demonstration').click();
+    await expect(page.locator('.plant-water-path')).toBeVisible();
+    await page.screenshot({ path: info.outputPath('plant-water.png') });
+    await button(page, 'Sunlight demonstration').click();
+    await expect(page.locator('.plant-light-rays')).toBeVisible();
+    await page.screenshot({ path: info.outputPath('plant-sunlight.png') });
+    await plantMore(page); await button(page, 'Change plant language').click();
+    await page.screenshot({ path: info.outputPath('plant-settings.png') });
+    await button(page, 'Close plant settings').click();
+    await expect(page.locator('.plant-title')).toHaveText('ഒരു ചെടി ഉണ്ടാക്കാം');
+    await page.evaluate(() => document.fonts.ready);
+    await page.screenshot({ path: info.outputPath('plant-malayalam.png') });
+    for (const target of await page.locator('.plant-controls > button').all()) {
+      expect((await target.boundingBox())!.height).toBeGreaterThanOrEqual(56);
+      await expect(target).toBeInViewport({ ratio: 1 });
+    }
+    for (const target of await page.locator('.plant-part-hit').all()) {
+      const box = (await target.boundingBox())!;
+      expect(Math.min(box.width, box.height)).toBeGreaterThanOrEqual(56);
+    }
+    expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth && document.documentElement.scrollHeight <= innerHeight)).toBe(true);
+    await plantSaved(page); const before = await savedPlant(page);
+    await button(page, 'Annotate').click();
+    await expect(page.locator('.content-layer')).toHaveAttribute('inert', '');
+    await drawDot(page);
+    await button(page, 'Whiteboard').click(); await drawDot(page, true);
+    await button(page, 'Explore').click(); await plantSaved(page);
+    expect(await savedPlant(page)).toEqual(before);
+    await button(page, 'Focus').click();
+    await page.screenshot({ path: info.outputPath('plant-focus.png') });
+    await button(page, 'Leave focus').click();
+    await page.reload(); await plantSaved(page);
+    expect(await savedPlant(page)).toEqual(before);
+    await expect(inkSurface(page)).toHaveAttribute('data-ink-count', '1');
+    await expect(page.locator('.plant-title')).toHaveText('ഒരു ചെടി ഉണ്ടാക്കാം');
+    await expect(page.locator('[data-slot="tray"]')).toHaveCount(0);
     await button(page, 'Whiteboard').click();
     await expect(inkSurface(page, true)).toHaveAttribute('data-ink-count', '1');
   });

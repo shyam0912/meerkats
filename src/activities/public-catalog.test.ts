@@ -7,10 +7,20 @@ import { CHEMISTRY } from '../../contracts/chemistry';
 import { PHYSICS } from '../../contracts/physics';
 import { bundledCatalog, bundledVersions } from './public-catalog';
 
-test('the public catalog keeps all three approved previews and excludes the engineering fixture', () => {
-  expect(bundledCatalog.nodes).toEqual(internal.nodes.filter(node => !Object.values<string>(DEMO).includes(node.id) && !Object.values<string>(PLANT).includes(node.id)));
-  expect(bundledCatalog.lessons).toEqual(internal.lessons.filter(lesson => lesson.id !== DEMO.lesson && lesson.id !== PLANT.lesson));
-  expect(bundledVersions.map(v => v.id)).toEqual([CHEMISTRY.version, PHYSICS.version, COUNTING.version]);
+test('the public catalog keeps all four approved previews and excludes the engineering fixture', () => {
+  expect(bundledCatalog.nodes).toEqual(internal.nodes.filter(node => !Object.values<string>(DEMO).includes(node.id)));
+  expect(bundledCatalog.lessons).toEqual(internal.lessons.filter(lesson => lesson.id !== DEMO.lesson));
+  expect(bundledVersions.map(v => v.id)).toEqual([CHEMISTRY.version, PHYSICS.version, COUNTING.version, PLANT.version]);
+});
+
+test('Standard 2 retains its original identity and pending academic review', () => {
+  const version = bundledVersions.find(v => v.id === PLANT.version)!;
+  expect(version.lessonId).toBe(PLANT.lesson);
+  expect(version.provenance.sourceType).toBe('original-demo');
+  expect(version.provenance.reviewStatus).toBe('teacher-review-pending');
+  expect(version.provenance.note).toBe('Original Demo Concept — Preview / Teacher Review Pending. Not an official SCERT chapter.');
+  expect(version.activities[0]!.id).toBe(PLANT.activity);
+  expect(version.activities[0]!.sceneId).toBe(PLANT.scene);
 });
 
 test('Standard 1 remains an original demo concept with teacher review pending', () => {
