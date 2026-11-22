@@ -16,6 +16,23 @@ async function fixture(page: Page) {
   await button(page, 'Shapes').click(); await button(page, 'Rectangle').click(); await button(page, 'Close shapes').click();
   await drag(page, 200, 200, 500, 400); await button(page, 'Select').click(); await button(page, 'Next shape').click();
 }
+
+async function overlappingObjects(page: Page) {
+  // One large text object covers all corner and rotation handles, not merely glyph pixels.
+  await button(page, 'Next text').click(); await button(page, 'Edit text').click();
+  await page.getByRole('textbox', { name: 'Board text' }).fill(Array(9).fill('Overlap മലയാളം '.repeat(3)).join('\n'));
+  await page.getByLabel('Font size').selectOption('32'); await button(page, 'Apply text').click();
+  const t = (await content(page)).texts[0]!;
+  await drag(page, t.origin.x + 20, t.origin.y + 20, 100, 40);
+  const movedText = (await content(page)).texts[0]!;
+  expect(movedText.origin.x).toBeCloseTo(80, 4); expect(movedText.origin.y).toBeCloseTo(20, 4);
+  await button(page, 'Shapes').click(); await button(page, 'Triangle').click(); await button(page, 'Close shapes').click();
+  await drag(page, 650, 240, 850, 450);
+  // A second overlapping shape must not steal the selected rectangle's handles/body either.
+  await button(page, 'Shapes').click(); await button(page, 'Rectangle').click(); await button(page, 'Close shapes').click();
+  await drag(page, 200, 200, 500, 400); await button(page, 'Select').click(); await button(page, 'Next shape').click();
+}
+
 for (const viewport of [{ width: 1920, height: 1080 }, { width: 1280, height: 720 }, { width: 1024, height: 600 }]) {
   test(`selected handles own text overlaps at ${viewport.width}`, async ({ page }, info) => {
     await page.setViewportSize(viewport); await fixture(page);
@@ -31,20 +48,28 @@ for (const viewport of [{ width: 1920, height: 1080 }, { width: 1280, height: 72
     await button(page, 'Redo').click(); expect(await content(page)).toEqual(corrected);
     await button(page, 'Undo').click();
 
-    // One large text object covers all corner and rotation handles, not merely glyph pixels.
-    await button(page, 'Next text').click(); await button(page, 'Edit text').click();
-    await page.getByRole('textbox', { name: 'Board text' }).fill(Array(9).fill('Overlap മലയാളം '.repeat(3)).join('\n'));
-    await page.getByLabel('Font size').selectOption('32'); await button(page, 'Apply text').click();
-    const t = (await content(page)).texts[0]!;
-    await drag(page, t.origin.x + 20, t.origin.y + 20, 100, 40);
-    const movedText = (await content(page)).texts[0]!;
-    expect(movedText.origin.x).toBeCloseTo(80, 4); expect(movedText.origin.y).toBeCloseTo(20, 4);
-    await button(page, 'Shapes').click(); await button(page, 'Triangle').click(); await button(page, 'Close shapes').click();
-    await drag(page, 650, 240, 850, 450);
-    // A second overlapping shape must not steal the selected rectangle's handles/body either.
-    await button(page, 'Shapes').click(); await button(page, 'Rectangle').click(); await button(page, 'Close shapes').click();
-    await drag(page, 200, 200, 500, 400); await button(page, 'Select').click(); await button(page, 'Next shape').click();
-    for (let index = 0; index < 2; index++) {
+    await overlappingObjects(page);
+    // The first rectangle is selected; its body also keeps ownership.
+    const beforeMove = await content(page); await drag(page, 350, 300, 380, 320);
+    expect((await content(page)).shapes[0]).not.toEqual(beforeMove.shapes[0]);
+    expect((await content(page)).texts).toEqual(beforeMove.texts); await button(page, 'Undo').click();
+    await surface(page).press('Escape'); const p = await point(page, 350, 300); await page.mouse.click(p.x, p.y);
+    await expect(surface(page)).toHaveAttribute('data-selected-text', beforeMove.texts[0]!.id);
+    await button(page, 'Edit text').click(); await button(page, 'Cancel text').click();
+    await button(page, 'Next shape').click();
+    const download = async (name: string) => { const pending = page.waitForEvent('download'); await button(page, 'Export PNG').click();
+      const file = await pending; await file.saveAs(info.outputPath(name)); const bytes = await readFile((await file.path())!);
+      await button(page, 'Dismiss export message').click(); return bytes; };
+    const selected = await download('selected.png'); await surface(page).press('Escape');
+    expect((await download('unselected.png')).equals(selected)).toBe(true);
+    const final = await content(page); await reloadBoard(page); expect(await content(page)).toEqual(final);
+  });
+  // Independently exercise each object's complete handle/history sequence. Keeping
+  // these separate from export/reload avoids one cumulative 30-second deadline
+  // for hundreds of browser calls while retaining every durable-state assertion.
+  for (const [index, shape] of ['rectangle', 'triangle'].entries()) {
+    test(`selected ${shape} handles own text overlaps at ${viewport.width}`, async ({ page }) => {
+      await page.setViewportSize(viewport); await fixture(page); await overlappingObjects(page);
       if (index) await button(page, 'Next shape').click();
       for (const name of ['Resize shape nw', 'Resize shape ne', 'Resize shape se', 'Resize shape sw', 'Rotate shape']) {
         const before = await content(page); const rev = Number(await surface(page).getAttribute('data-revision'));
@@ -62,25 +87,10 @@ for (const viewport of [{ width: 1920, height: 1080 }, { width: 1280, height: 72
         await expect(surface(page)).toHaveAttribute('data-revision', String(rev + 1));
         await button(page, 'Undo').click(); expect(await content(page)).toEqual(before);
         await button(page, 'Redo').click(); expect(await content(page)).toEqual(after);
-        await button(page, 'Undo').click();
+        await button(page, 'Undo').click(); expect(await content(page)).toEqual(before);
       }
-    }
-    // Next shape cycles back to the first rectangle, whose body also keeps ownership.
-    await button(page, 'Next shape').click(); await button(page, 'Next shape').click();
-    const beforeMove = await content(page); await drag(page, 350, 300, 380, 320);
-    expect((await content(page)).shapes[0]).not.toEqual(beforeMove.shapes[0]);
-    expect((await content(page)).texts).toEqual(beforeMove.texts); await button(page, 'Undo').click();
-    await surface(page).press('Escape'); const p = await point(page, 350, 300); await page.mouse.click(p.x, p.y);
-    await expect(surface(page)).toHaveAttribute('data-selected-text', beforeMove.texts[0]!.id);
-    await button(page, 'Edit text').click(); await button(page, 'Cancel text').click();
-    await button(page, 'Next shape').click();
-    const download = async (name: string) => { const pending = page.waitForEvent('download'); await button(page, 'Export PNG').click();
-      const file = await pending; await file.saveAs(info.outputPath(name)); const bytes = await readFile((await file.path())!);
-      await button(page, 'Dismiss export message').click(); return bytes; };
-    const selected = await download('selected.png'); await surface(page).press('Escape');
-    expect((await download('unselected.png')).equals(selected)).toBe(true);
-    const final = await content(page); await reloadBoard(page); expect(await content(page)).toEqual(final);
-  });
+    });
+  }
 }
 
 test('overlapped handles preserve Escape, pointer cancellation and touch history', async ({ browser }) => {

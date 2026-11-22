@@ -1,4 +1,6 @@
 import { PLANT, plantVersion } from '../../contracts/plant-content.js';
+import { FRACTIONS, fractionsCatalog, fractionsVersion } from '../../contracts/fractions-content.js';
+import { initialFractionState, placeFractionPiece } from '../../contracts/fractions.js';
 import { wholePlant } from '../../contracts/plant.js';
 import { COUNTING, countingVersion } from '../../contracts/counting-content.js';
 import { beforeAll, afterAll, describe, expect, it } from 'vitest';
@@ -14,7 +16,7 @@ import { seedIdentity } from '../src/db/seed.js';
 import { parseEnv } from '../src/config/env.js';
 import { buildApp } from '../src/app.js';
 import { migrateWhiteboard, whiteboardV3Schema, whiteboardV4Schema, type SaveRequest, type SerializedV1 } from '../../contracts/index.js';
-import { memberships } from '../src/db/schema.js';
+import { memberships, catalogNodes, lessons } from '../src/db/schema.js';
 import { eq } from 'drizzle-orm';
 import { seedCatalog, publishVersion } from '../src/modules/catalog.js';
 import { DEMO, demoVersion } from '../../contracts/demo.js';
@@ -55,6 +57,11 @@ beforeAll(async () => {
   await applyMigrations(url); await applyMigrations(url);
   connection = connect(url);
   await seedCatalog(connection.db);
+  // IC-4A metadata is test-only until a renderer is approved. Seed only this disposable UTF8 cluster.
+  for (const node of fractionsCatalog.nodes) await connection.db.insert(catalogNodes).values(node);
+  for (const definition of fractionsCatalog.lessons)
+    await connection.db.insert(lessons).values({ id: definition.id, topicId: definition.topicId, definition });
+  await publishVersion(connection.db, fractionsVersion);
   const config = parseEnv({ NODE_ENV: 'test', DATABASE_URL: url, DEV_IDENTITY_ENABLED: 'true', DEV_USER_ID: userId,
     DEV_SCHOOL_ID: schoolId, ALLOWED_ORIGIN: 'http://127.0.0.1:5173' });
   await seedIdentity(connection.db, config); app = buildApp(connection.db, config);
@@ -69,6 +76,50 @@ afterAll(async () => {
 });
 
 describe('real PostgreSQL API', () => {
+  it('round-trips fraction placements in UTF8 with exact retries, revision checks and tenant isolation', async () => {
+    expect((await connection.pool.query('SHOW server_encoding')).rows[0].server_encoding).toBe('UTF8');
+    const session = { id: randomUUID(), lessonVersionId: FRACTIONS.version,
+      context: { classId: FRACTIONS.class, subjectId: FRACTIONS.subject, classLabel: 'Standard 3', subjectLabel: 'ഗണിതം' } };
+    expect((await app.inject({ method: 'POST', url: '/api/v1/sessions', payload: session })).statusCode).toBe(200);
+    const activity = fractionsVersion.activities[0]!;
+    if (activity.kind !== 'fraction-board') throw new Error('Fraction fixture');
+    const progress = initialProgress(fractionsVersion); progress.localRevision = 1;
+    progress.states[FRACTIONS.activity] = { ...placeFractionPiece(activity.config, initialFractionState(activity.config),
+      activity.config.pieceIds[0]!, { lane: 'bottom', start: 2 }), language: 'ml' };
+    const body = { mutationId: randomUUID(), baseServerRevision: 0, progress }, url = `/api/v1/sessions/${session.id}/progress`;
+    const response = await app.inject({ method: 'PUT', url, payload: body }); expect(response.statusCode).toBe(200);
+    expect((await app.inject({ method: 'PUT', url, payload: body })).json()).toEqual(response.json());
+    expect((await app.inject({ method: 'PUT', url, payload: { ...body, mutationId: randomUUID() } })).statusCode).toBe(409);
+    expect((await app.inject({ method: 'PUT', url, payload: { ...body, progress: { ...progress, localRevision: 2 } } })).statusCode).toBe(409);
+    expect((await other.inject({ method: 'PUT', url, payload: body })).statusCode).toBe(404);
+    const restored = (await app.inject(`/api/v1/sessions/${session.id}`)).json();
+    expect(restored.progress).toEqual(progress); expect(restored.progressServerRevision).toBe(1);
+    expect(restored.context.subjectLabel).toBe('ഗണിതം');
+    expect((await app.inject(`/api/v1/lesson-versions/${FRACTIONS.version}`)).json()).toEqual(fractionsVersion);
+  });
+  it('rejects malformed and config-foreign fractions without changing the previous valid server state', async () => {
+    const session = { id: randomUUID(), lessonVersionId: FRACTIONS.version,
+      context: { classId: FRACTIONS.class, subjectId: FRACTIONS.subject, classLabel: 'Standard 3', subjectLabel: 'Mathematics' } };
+    expect((await app.inject({ method: 'POST', url: '/api/v1/sessions', payload: session })).statusCode).toBe(200);
+    const progress = initialProgress(fractionsVersion), state = progress.states[FRACTIONS.activity]!;
+    if (state.kind !== 'fraction-board') throw new Error('Fraction state');
+    const invalidStates = [
+      { ...state, pieces: state.pieces.slice(1) },
+      { ...state, pieces: Array(6).fill(state.pieces[0]) },
+      { ...state, pieces: state.pieces.map(p => ({ ...p, id: randomUUID() })) },
+      { ...state, pieces: state.pieces.map(p => ({ ...p, placement: { lane: 'top', start: 0 } })) },
+      { ...state, pieces: state.pieces.map((p, i) => i === 0 ? { ...p, placement: { lane: 'top', start: 3 } } : p) },
+      { ...state, pieces: state.pieces.map((p, i) => i === 0 ? { ...p, placement: { lane: 'top', start: .5 } } : p) },
+      { ...state, kind: 'unknown-fraction' },
+    ];
+    for (const invalid of invalidStates) {
+      const payload = { mutationId: randomUUID(), baseServerRevision: 0,
+        progress: { ...progress, localRevision: 1, states: { [FRACTIONS.activity]: invalid } } };
+      expect((await app.inject({ method: 'PUT', url: `/api/v1/sessions/${session.id}/progress`, payload })).statusCode).toBe(400);
+      const restored = (await app.inject(`/api/v1/sessions/${session.id}`)).json();
+      expect(restored.progress).toEqual(progress); expect(restored.progressServerRevision).toBe(0);
+    }
+  });
   it('accepts bounded counting progress, retains exact retries and rejects malformed or stale saves', async () => {
     const session = { id: randomUUID(), lessonVersionId: COUNTING.version, context: { classId: COUNTING.class, subjectId: COUNTING.subject, classLabel: 'Standard 1', subjectLabel: 'Mathematics' } };
     expect((await app.inject({ method: 'POST', url: '/api/v1/sessions', payload: session })).statusCode).toBe(200);
