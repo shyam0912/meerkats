@@ -71,9 +71,9 @@ test('invalid stable ID does not silently select another class', async ({ page }
   await expect(page.locator('.discovery-standard')).toHaveCount(10);
 });
 
-test('all seven remaining planned standards are truthful, reloadable and restore selection focus', async ({ page }) => {
+test('all six remaining planned standards are truthful, reloadable and restore selection focus', async ({ page }) => {
   await page.goto('/catalog');
-  for (let number = 3; number <= 9; number++) {
+  for (let number = 4; number <= 9; number++) {
     const label = 'Standard ' + number;
     await page.getByRole('button', { name: label, exact: true }).click();
     await expect(page).toHaveURL('/catalog?standard=' + number);

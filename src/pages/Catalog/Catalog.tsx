@@ -33,12 +33,12 @@ function LessonPreview({ definition, onStart }: { definition: LessonDefinition; 
     <div>
       <Badge state={state} />
       <h2>{definition.title}</h2>
-      {version ? <p className="discovery-description">{state === 'Ready' ? 'Reviewed interactive lesson' : version.activities.some(a => a.kind === 'counting-board' || a.kind === 'plant-builder') ? 'Original Demo Concept — Preview / Teacher Review Pending' : version.provenance.reviewStatus === 'engineering-demo' ? 'Prototype · Engineering demonstration' : 'Prototype lesson · Academic teacher review pending'}</p> :
+      {version ? <p className="discovery-description">{state === 'Ready' ? 'Reviewed interactive lesson' : version.activities.some(a => a.kind === 'fraction-board' || a.kind === 'counting-board' || a.kind === 'plant-builder') ? 'Original Demo Concept — Preview / Teacher Review Pending' : version.provenance.reviewStatus === 'engineering-demo' ? 'Prototype · Engineering demonstration' : 'Prototype lesson · Academic teacher review pending'}</p> :
         <p role={error ? 'alert' : 'status'} className="discovery-description">{error ? 'This lesson could not be loaded. No teaching session was started.' : 'Loading lesson preview…'}</p>}
       {error ? <button className="discovery-control" onClick={() => { setError(false); setAttempt(a => a + 1); }}>Retry lesson</button> :
         <button className="discovery-start" disabled={!version} onClick={() => { if (version) onStart(version); }}>Start teaching<span aria-hidden="true"> →</span></button>}
     </div>
-    {version && <div className="discovery-outcomes"><p>In this lesson</p><ul>{version.objectives.map(objective => <li key={objective}>{objective}</li>)}</ul><span>{version.activities.length} {version.activities.some(a => a.kind === 'counting-board' || a.kind === 'plant-builder') ? 'open exploration' : 'interactive steps'}</span></div>}
+    {version && <div className="discovery-outcomes"><p>In this lesson</p><ul>{version.objectives.map(objective => <li key={objective}>{objective}</li>)}</ul><span>{version.activities.length} {version.activities.some(a => a.kind === 'fraction-board' || a.kind === 'counting-board' || a.kind === 'plant-builder') ? 'open exploration' : 'interactive steps'}</span></div>}
   </article>;
 }
 function Discovery({ data, parentId, standard, internal }: { data: CatalogData; parentId: string | null; standard: string | null; internal: boolean }) {

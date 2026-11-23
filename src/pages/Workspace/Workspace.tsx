@@ -13,7 +13,7 @@ import WhiteboardPro from '../../components/whiteboard/WhiteboardPro';
 export default function Workspace() {
   const navigate = useNavigate();
   const { selection, setSelection, activatePersistence, storageChecked, lesson, isInteracting } = useDrawing();
-  const continuous = lesson?.version.activities.some(a => a.kind === 'plant-builder' || a.kind === 'thin-lens' || a.kind === 'counting-board');
+  const continuous = lesson?.version.activities.some(a => a.kind === 'fraction-board' || a.kind === 'plant-builder' || a.kind === 'thin-lens' || a.kind === 'counting-board');
   const [activityControlsHost, setActivityControlsHost] = useState<HTMLDivElement | null>(null);
   const [focused, setFocused] = useState(false);
   useEffect(() => {

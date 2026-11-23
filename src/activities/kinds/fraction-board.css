@@ -1,0 +1,33 @@
+@font-face { font-family: Fraction Malayalam; src: url('/fonts/NotoSansMalayalam.ttf') format('truetype'); font-display: swap; }
+.fraction-scene { position: relative; width: 1200px; height: 675px; font-family: 'Segoe UI', 'Fraction Malayalam', sans-serif; color: #214f45; }
+.fraction-canvas { width: 100%; height: 100%; touch-action: none; }
+.fraction-title { font-size: 34px; font-weight: 650; fill: #214f45; }
+.fraction-hint { font-size: 23px; fill: #53675d; }
+.fraction-lane-name { font-size: 30px; font-weight: 650; fill: #214f45; }
+.fraction-tray-title { font-size: 23px; fill: #53675d; }
+.fraction-home { fill: #f3f0e3; stroke: #b6bca8; stroke-dasharray: 7 6; stroke-width: 2; pointer-events: none; }
+.fraction-piece { cursor: grab; outline: none; touch-action: none; }
+.fraction-piece:active { cursor: grabbing; }
+.fraction-piece-body { stroke-width: 3; }
+.fraction-piece.half .fraction-piece-body { fill: #de9450; stroke: #925122; }
+.fraction-piece.quarter .fraction-piece-body { fill: #64a99c; stroke: #27665a; }
+.fraction-piece.selected .fraction-piece-body, .fraction-piece:focus-visible .fraction-piece-body { stroke: #243e67; stroke-width: 6; stroke-dasharray: 9 4; }
+.fraction-piece.invalid .fraction-piece-body { stroke: #ab3b38; stroke-dasharray: 5 4; }
+.fraction-piece.valid .fraction-piece-body { stroke: #214f45; }
+.fraction-number { font-size: 45px; font-weight: 700; fill: #172f2a; }
+.fraction-target { outline: none; cursor: pointer; }
+.fraction-target rect { fill: transparent; stroke: transparent; stroke-width: 3; }
+.fraction-target.available rect { fill: #e2eddd; stroke: #8fa68c; stroke-dasharray: 6 5; }
+.fraction-target:focus-visible rect { stroke: #243e67; stroke-width: 6; }
+.fraction-snap { fill: #c4d6b877; stroke: #214f45; stroke-width: 5; stroke-dasharray: 10 5; pointer-events: none; }
+.fraction-guides { stroke: #41605299; stroke-width: 3; stroke-dasharray: 7 5; }
+.fraction-review { position: absolute; bottom: 6px; left: 38px; font-size: 16px; color: #53675d; pointer-events: none; }
+.fraction-announcement { position: absolute; left: 1040px; top: 418px; width: 138px; font-size: 20px; line-height: 1.5; color: #53675d; pointer-events: none; }
+.fraction-controls { position: relative; display: flex; align-items: center; gap: 8px; font-family: 'Segoe UI', 'Fraction Malayalam', sans-serif; }
+.fraction-controls .workspace-button { padding-inline: 13px; white-space: nowrap; }
+.fraction-controls button:focus-visible { outline: 3px solid #214f45; outline-offset: 3px; }
+.fraction-settings { position: absolute; bottom: calc(100% + 12px); right: 0; width: min(450px, 85vw); padding: 78px 18px 18px; display: flex; flex-wrap: wrap; gap: 12px; background: #fcfcf6; border: 1px solid #a4b9aa; border-radius: 22px; box-shadow: 0 8px 30px #173e3820; z-index: 30; }
+.fraction-close { position: absolute; right: 12px; top: 10px; }
+.teacher-controls:has(.fraction-controls) { flex-wrap: wrap; }
+.teacher-controls:has(.fraction-controls) .activity-actions { min-width: 0; }
+@media (max-width: 1100px) { .fraction-controls .workspace-button { padding-inline: 10px; font-size: 16px; } }

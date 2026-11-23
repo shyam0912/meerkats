@@ -121,11 +121,12 @@ describe('fraction contracts and exact mathematical invariants', () => {
 });
 
 describe('fraction lesson and persistence compatibility', () => {
-  it('validates metadata with existing catalog ancestry but does not expose an unfinished activity', () => {
-    expect(catalogSchema.safeParse({ nodes: [...bundledCatalog.nodes, ...fractionsCatalog.nodes], lessons: [...bundledCatalog.lessons, ...fractionsCatalog.lessons] }).success).toBe(true);
+  it('validates development discovery while keeping the preview outside the public catalog', () => {
+    expect(catalogSchema.safeParse(bundledCatalog).success).toBe(true);
     expect(fractionsVersion.provenance.reviewStatus).toBe('teacher-review-pending');
     expect(fractionsVersion.provenance.note).toContain('Original Demo Concept — Preview / Teacher Review Pending');
-    for (const catalog of [bundledCatalog, publicCatalog]) expect(catalog.lessons.some(l => l.id === FRACTIONS.lesson)).toBe(false);
+    expect(bundledCatalog.lessons.find(l => l.id === FRACTIONS.lesson)).toEqual(fractionsCatalog.lessons[0]);
+    expect(publicCatalog.lessons.some(l => l.id === FRACTIONS.lesson)).toBe(false);
   });
   it('initializes and validates pinned progress, rejecting mismatched identities and activity state', () => {
     const progress = initialProgress(fractionsVersion);

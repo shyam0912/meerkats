@@ -1,7 +1,7 @@
 import { lessonVersionSchema, type Catalog } from './lesson.js';
 import { CHEMISTRY } from './chemistry-content.js';
 
-// Contract fixture only in IC-4A: deliberately absent from development/public discovery.
+// Original development preview. Deliberately absent from the public demo catalog.
 export const FRACTIONS = {
   class: '90000000-0000-4000-8000-000000000002', subject: '90000000-0000-4000-8000-000000000003',
   chapter: '90000000-0000-4000-8000-000000000004', topic: '90000000-0000-4000-8000-000000000005',

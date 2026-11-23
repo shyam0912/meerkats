@@ -1,3 +1,4 @@
+import { FRACTIONS } from '../../contracts/fractions-content';
 import { PLANT } from '../../contracts/plant-content';
 import { COUNTING } from '../../contracts/counting-content';
 import { expect, test } from 'vitest';
@@ -7,9 +8,9 @@ import { CHEMISTRY } from '../../contracts/chemistry';
 import { PHYSICS } from '../../contracts/physics';
 import { bundledCatalog, bundledVersions } from './public-catalog';
 
-test('the public catalog keeps all four approved previews and excludes the engineering fixture', () => {
-  expect(bundledCatalog.nodes).toEqual(internal.nodes.filter(node => !Object.values<string>(DEMO).includes(node.id)));
-  expect(bundledCatalog.lessons).toEqual(internal.lessons.filter(lesson => lesson.id !== DEMO.lesson));
+test('the public catalog keeps all four approved previews and excludes engineering and development-only fractions', () => {
+  expect(bundledCatalog.nodes).toEqual(internal.nodes.filter(node => ![...Object.values<string>(DEMO), ...Object.values<string>(FRACTIONS)].includes(node.id)));
+  expect(bundledCatalog.lessons).toEqual(internal.lessons.filter(lesson => lesson.id !== DEMO.lesson && lesson.id !== FRACTIONS.lesson));
   expect(bundledVersions.map(v => v.id)).toEqual([CHEMISTRY.version, PHYSICS.version, COUNTING.version, PLANT.version]);
 });
 

@@ -3,6 +3,7 @@ import type { ActivityDefinition, ActivityState } from '../../contracts/lesson';
 
 export interface ActivityProps { enabled?: boolean; controlsHost?: HTMLDivElement | null; activity: ActivityDefinition; state: ActivityState; onChange: (state: ActivityState) => void }
 const registry = {
+  'fraction-board': { component: lazy(() => import('./kinds/FractionBoard')), canExplore: true, canReveal: false, canReset: false },
   'plant-builder': { component: lazy(() => import('./kinds/PlantBuilder')), canExplore: true, canReveal: false, canReset: false },
   'counting-board': { component: lazy(() => import('./kinds/CountingBoard')), canExplore: true, canReveal: false, canReset: false },
   'thin-lens': { component: lazy(() => import('./kinds/ThinLens')), canExplore: true, canReveal: false, canReset: true },

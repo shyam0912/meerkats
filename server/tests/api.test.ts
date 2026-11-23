@@ -1,5 +1,5 @@
 import { PLANT, plantVersion } from '../../contracts/plant-content.js';
-import { FRACTIONS, fractionsCatalog, fractionsVersion } from '../../contracts/fractions-content.js';
+import { FRACTIONS, fractionsVersion } from '../../contracts/fractions-content.js';
 import { initialFractionState, placeFractionPiece } from '../../contracts/fractions.js';
 import { wholePlant } from '../../contracts/plant.js';
 import { COUNTING, countingVersion } from '../../contracts/counting-content.js';
@@ -16,7 +16,7 @@ import { seedIdentity } from '../src/db/seed.js';
 import { parseEnv } from '../src/config/env.js';
 import { buildApp } from '../src/app.js';
 import { migrateWhiteboard, whiteboardV3Schema, whiteboardV4Schema, type SaveRequest, type SerializedV1 } from '../../contracts/index.js';
-import { memberships, catalogNodes, lessons } from '../src/db/schema.js';
+import { memberships } from '../src/db/schema.js';
 import { eq } from 'drizzle-orm';
 import { seedCatalog, publishVersion } from '../src/modules/catalog.js';
 import { DEMO, demoVersion } from '../../contracts/demo.js';
@@ -57,11 +57,6 @@ beforeAll(async () => {
   await applyMigrations(url); await applyMigrations(url);
   connection = connect(url);
   await seedCatalog(connection.db);
-  // IC-4A metadata is test-only until a renderer is approved. Seed only this disposable UTF8 cluster.
-  for (const node of fractionsCatalog.nodes) await connection.db.insert(catalogNodes).values(node);
-  for (const definition of fractionsCatalog.lessons)
-    await connection.db.insert(lessons).values({ id: definition.id, topicId: definition.topicId, definition });
-  await publishVersion(connection.db, fractionsVersion);
   const config = parseEnv({ NODE_ENV: 'test', DATABASE_URL: url, DEV_IDENTITY_ENABLED: 'true', DEV_USER_ID: userId,
     DEV_SCHOOL_ID: schoolId, ALLOWED_ORIGIN: 'http://127.0.0.1:5173' });
   await seedIdentity(connection.db, config); app = buildApp(connection.db, config);

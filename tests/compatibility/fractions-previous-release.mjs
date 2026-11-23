@@ -66,7 +66,9 @@ try {
   target = 5187; await page.goto(sessionURL);
   await expect(page.getByRole('heading', { name: 'Session recovery needs attention' })).toBeVisible();
   expect(await raw()).toEqual(original);
-  expect(await versions()).toEqual(currentVersions);
+  const previousVersions = await versions();
+  expect(currentVersions).toHaveLength(previousVersions.length + 1);
+  expect(currentVersions.filter(v => v.id !== original.snapshot.lesson.version.id)).toEqual(previousVersions);
   await page.screenshot({ path: join(output, 'old-client-safe-rejection.png') });
   // Exercise the actual OLD save() guard with a valid old-format candidate at the same key.
   const result = await page.evaluate(async ({ id, generation }) => {
