@@ -1,4 +1,5 @@
 import { launchPlant, plantMore, plantDrag, plantSaved, savedPlant } from '../helpers/plant';
+import { launchFractions, fractionDrag, fractionPoint, fractionSaved, savedFractions, fractionRecord } from '../helpers/fractions';
 import { expect, test as base } from '@playwright/test';
 import { readFile, readdir } from 'node:fs/promises';
 import { execFileSync } from 'node:child_process';
@@ -24,6 +25,61 @@ const test = base.extend<{ monitor: void }>({
     expect(problems).toEqual([]);
   }, { auto: true }],
 });
+
+for (const [width, height] of [[1920, 1080], [1280, 720], [1024, 600]] as const) {
+  test(`public Standard 3 comparison, cancellation and bilingual recovery at ${width}x${height}`, async ({ page }, info) => {
+    await page.setViewportSize({ width, height }); await launchFractions(page);
+    await expect(page.getByText('Original Demo Concept — Preview / Teacher Review Pending', { exact: true })).toBeVisible();
+    await fractionSaved(page); const initial = await savedFractions(page);
+    await fractionDrag(page, 1, 260, 128);
+    await page.getByTestId('fraction-piece-3').click(); await page.getByTestId('fraction-target-bottom-0').click();
+    await page.getByTestId('fraction-piece-4').press('Enter'); await page.getByTestId('fraction-target-bottom-1').press('Enter');
+    await fractionSaved(page); const comparison = await savedFractions(page);
+    expect(comparison.revision).toBe(initial.revision + 3);
+    expect(comparison.state.pieces.map(p => p.id)).toEqual(initial.state.pieces.map(p => p.id));
+    expect(comparison.state.pieces.map(p => p.placement)).toEqual([{ lane: 'top', start: 0 }, null, { lane: 'bottom', start: 0 }, { lane: 'bottom', start: 1 }, null, null]);
+    const widths = await page.locator('.fraction-piece-body').evaluateAll(nodes => nodes.map(n => (n as SVGRectElement).getBBox().width));
+    expect(widths[0]).toBe(widths[2]! + widths[3]!);
+    const lanes = await page.locator('[data-testid^="fraction-lane-"]').evaluateAll(nodes => nodes.map(n => (n as SVGRectElement).getBBox().width));
+    expect(lanes).toEqual([widths[0]! * 2, widths[0]! * 2]);
+    await fractionDrag(page, 2, 460, 128); await fractionSaved(page); expect(await savedFractions(page)).toEqual(comparison);
+    await expect(page.locator('.fraction-announcement')).toContainText('does not fit');
+    const piece = (await page.getByTestId('fraction-piece-2').boundingBox())!, target = await fractionPoint(page, 860, 178);
+    await page.mouse.move(piece.x + piece.width / 2, piece.y + piece.height / 2); await page.mouse.down(); await page.mouse.move(target.x, target.y);
+    await expect(page.getByTestId('fraction-snap-preview')).toBeVisible();
+    expect(await savedFractions(page)).toEqual(comparison);
+    await page.keyboard.press('Escape'); await page.mouse.up(); await fractionSaved(page); expect(await savedFractions(page)).toEqual(comparison);
+    await button(page, 'Fraction labels').click(); await button(page, 'Alignment guides').click();
+    await expect(page.locator('.fraction-number')).toHaveCount(6); await expect(page.getByTestId('fraction-guides')).toHaveCount(0);
+    await page.screenshot({ path: info.outputPath('fractions-comparison.png') });
+    await page.getByTestId('fraction-piece-4').click(); await button(page, 'Return selected piece to tray').click();
+    await page.getByTestId('fraction-piece-4').click(); await page.getByTestId('fraction-target-bottom-1').click();
+    await fractionSaved(page); const beforeReset = await savedFractions(page);
+    await button(page, 'More fraction controls').click(); await button(page, 'Reset arrangement').click();
+    await button(page, 'Keep arrangement').click(); expect(await savedFractions(page)).toEqual(beforeReset);
+    await button(page, 'Reset arrangement').click(); await button(page, 'Reset').click(); await fractionSaved(page);
+    expect((await savedFractions(page)).state.pieces.every(p => p.placement === null)).toBe(true);
+    await fractionDrag(page, 1, 260, 128); await fractionDrag(page, 3, 260, 252); await fractionDrag(page, 4, 460, 252);
+    await button(page, 'More fraction controls').click(); await button(page, 'Change fraction language').click();
+    await page.evaluate(() => document.fonts.ready);
+    await page.screenshot({ path: info.outputPath('fractions-malayalam-controls.png') }); await button(page, 'Close fraction settings').click();
+    await expect(page.locator('.fraction-title')).toHaveText('ഒരേ മുഴുവന്റെ ഭാഗങ്ങൾ');
+    for (const control of await page.locator('.fraction-controls > button').all()) {
+      expect((await control.boundingBox())!.height).toBeGreaterThanOrEqual(56); await expect(control).toBeInViewport({ ratio: 1 });
+    }
+    await fractionSaved(page); const arranged = await savedFractions(page);
+    await button(page, 'Annotate').click(); await expect(page.locator('.content-layer')).toHaveAttribute('inert', ''); await drawDot(page);
+    await button(page, 'Whiteboard').click(); await drawDot(page, true); await button(page, 'Explore').click();
+    await fractionSaved(page); expect(await savedFractions(page)).toEqual(arranged);
+    const record = await fractionRecord(page), url = page.url();
+    await button(page, 'Focus').click(); await page.screenshot({ path: info.outputPath('fractions-focus.png') }); await button(page, 'Leave focus').click();
+    await page.reload(); await fractionSaved(page); expect((await fractionRecord(page)).snapshot).toEqual(record.snapshot);
+    await page.goto('/'); await page.goto(url); await fractionSaved(page); expect((await fractionRecord(page)).snapshot).toEqual(record.snapshot);
+    await expect(inkSurface(page)).toHaveAttribute('data-ink-count', '1');
+    expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth && document.documentElement.scrollHeight <= innerHeight)).toBe(true);
+    await page.screenshot({ path: info.outputPath('fractions-recovered.png') });
+  });
+}
 
 test('upload contains only frontend assets and navigations resolve to the SPA', async ({ request }) => {
   const config = JSON.parse(await readFile('wrangler.jsonc', 'utf8'));
